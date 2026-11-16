@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#0b3d33">
+<meta name="description" content="Kantong membantu mahasiswa mencatat pemasukan, pengeluaran, anggaran, tabungan, dan tugas kuliah.">
+<title>Kantong — Pencatat Keuangan Mahasiswa</title>
+<link rel="stylesheet" href="styles.css">
+<script src="app.js" defer></script>
+</head>
+<body>
+<div class="app">
+ <aside>
+  <div class="brand">Kantong</div>
+  <nav id="nav" aria-label="Menu utama"></nav>
+ </aside>
+ <div class="content">
+  <div class="mobile-brand" aria-hidden="true">Kantong</div>
+  <main id="main" tabindex="-1"></main>
+ </div>
+</div>
+<button class="fab" id="fab" aria-label="Catat transaksi baru" type="button"></button>
+<dialog id="dq" aria-label="Catat transaksi"></dialog>
+<div id="toast" role="status" aria-live="polite" hidden></div>
+<noscript><p>Aplikasi ini membutuhkan JavaScript aktif.</p></noscript>
+</body>
+</html>
