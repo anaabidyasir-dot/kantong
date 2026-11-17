@@ -90,7 +90,25 @@ V.beranda=()=>{
    h('section',{class:'pn'},h('h2',{},'Pengeluaran per kategori'),cats.length?h('div',{class:'lg'},dn,h('ul',{},cats.map(([c,v])=>h('li',{},h('i',{class:'sw',style:'background:'+col(c)}),c,h('span',{},rp(v)))))):empty('Belum ada pengeluaran bulan ini.')),
    h('section',{class:'pn'},h('h2',{},'7 hari terakhir'),ch,h('p',{class:'mute sm'},'Total '+rp(w1)+' dalam seminggu.'))),
   h('h2',{},'Transaksi hari ini'),rec.length?rec.map(t=>txRow(t)):empty('Belum ada transaksi hari ini. Riwayat sebelumnya ada di menu Transaksi.'),
-  tk.length?[h('h2',{},'Tugas terdekat'),tk.map(t=>h('div',{class:'li',style:'grid-template-columns:1fr auto'},t.t,h('small',{},t.due?'Tenggat '+fmtD(t.due):'Tanpa tenggat')))]:'');
+
+  h('section',{class:'pn',style:'margin-top:1rem'},
+    h('h2',{},'Tugas terdekat'),
+
+    tk.length
+      ? tk.map(t=>h('div',{
+          class:'li',
+          style:'grid-template-columns:1fr auto'
+        },
+          h('span',{},t.t),
+          h('small',{},
+            t.due
+              ? 'Tenggat '+fmtD(t.due)
+              : 'Tanpa tenggat'
+          )
+        ))
+      : empty('Belum ada tugas aktif. Tambahkan tugas melalui menu Tugas.')
+  ));
+
 };
 
 V.transaksi=()=>{
