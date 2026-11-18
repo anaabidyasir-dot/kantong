@@ -33,7 +33,7 @@ const $=s=>document.querySelector(s);
 function h(t,a,...c){const e=document.createElement(t);for(const k in a||{}){if(k.startsWith('on'))e.addEventListener(k.slice(2),a[k]);else e.setAttribute(k,a[k])}c.flat().forEach(x=>e.append(x==null?'':x));return e}
 const sv=(t,a,...c)=>{const e=document.createElementNS('http://www.w3.org/2000/svg',t);for(const k in a)e.setAttribute(k,a[k]);c.forEach(x=>e.append(x));return e};
 const ic=p=>{const s=sv('svg',{viewBox:'0 0 24 24',width:20,height:20,fill:'none',stroke:'currentColor','stroke-width':2,'stroke-linecap':'round','stroke-linejoin':'round','aria-hidden':'true'});p.split('|').forEach(d=>s.append(sv('path',{d})));return s};
-const IC={beranda:'M3 11l9-8 9 8|M5 10v10h14V10',transaksi:'M8 6h13|M8 12h13|M8 18h13|M3 6h.01|M3 12h.01|M3 18h.01',anggaran:'M21 12A9 9 0 1 1 12 3v9z',tabungan:'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18|M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8',utang:'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2|M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8|M22 21v-2a4 4 0 0 0-3-3.9|M16 3.1a4 4 0 0 1 0 7.8',tugas:'M5 12l5 5L20 7',data:'M12 3v12|M7 10l5 5 5-5|M4 21h16',plus:'M12 5v14|M5 12h14'};
+const IC={beranda:'M3 11l9-8 9 8|M5 10v10h14V10',transaksi:'M8 6h13|M8 12h13|M8 18h13|M3 6h.01|M3 12h.01|M3 18h.01',anggaran:'M21 12A9 9 0 1 1 12 3v9z',tabungan:'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18|M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8',utang:'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2|M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8|M22 21v-2a4 4 0 0 0-3-3.9|M16 3.1a4 4 0 0 1 0 7.8',tugas:'M5 12l5 5L20 7',data:'M12 3v12|M7 10l5 5 5-5|M4 21h16',myspace:'M4 4h16v16H4z|M8 8h8|M8 12h8|M8 16h5',plus:'M12 5v14|M5 12h14'};
 function toast(m){const t=$('#toast');t.textContent=m;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>t.hidden=true,2800)}
 const fld=(l,i)=>h('label',{class:'f'},h('span',{},l),i);
 const bar=(v,max,c)=>{const p=max>0?v/max:0;return h('div',{class:'bar'+(p>1?' over':'')},h('i',{style:'width:'+Math.min(100,p*100)+'%'+(c&&p<=1?';background:'+c:'')}))};
@@ -45,6 +45,7 @@ const txRow=(t,onDel)=>h('div',{class:'li'},h('i',{class:'dot',style:'background
  h('div',{},t.cat,h('small',{},t.note||fmtD(t.date))),h('span',{class:'amt '+t.type},(t.type==='in'?'+ ':'− ')+rp(t.amt)),
  onDel?h('button',{class:'lk','aria-label':'Hapus transaksi '+t.cat,onclick:()=>{if(confirm('Hapus transaksi ini?'))onDel(t.id)}},'Hapus'):h('span'));
 const V={};
+V.myspace=()=>window.renderMySpace();
 
 function openAdd(){
  let ty='out',ct=EXP[0];const d=$('#dq');
@@ -168,7 +169,7 @@ V.data=()=>{
    h('div',{style:'margin-top:1rem'},fld('Pulihkan dari file cadangan',fi))),
   h('section',{class:'pn',style:'margin-top:1rem'},h('h2',{},'Hapus semua data'),h('p',{class:'mute sm'},'Peringatan: file cadangan berisi catatan keuangan dalam bentuk yang dapat dibaca. Jangan bagikan kepada orang lain.'),h('button',{class:'btn ghost',onclick:()=>{if(confirm('Hapus semua data? Ini tidak bisa dibatalkan.')){S=blank();save();route()}}},'Hapus semua data')))};
 
-const NAV=[['beranda','Beranda'],['transaksi','Transaksi'],['anggaran','Anggaran'],['tabungan','Tabungan'],['utang','Utang'],['tugas','Tugas'],['data','Data']];
+const NAV=[['beranda','Beranda'],['transaksi','Transaksi'],['anggaran','Anggaran'],['tabungan','Tabungan'],['utang','Utang'],['tugas','Tugas'],['myspace','MySpace'],['data','Data']];
 function route(){const k=Object.prototype.hasOwnProperty.call(V,location.hash.slice(1))?location.hash.slice(1):'beranda';
  $('#nav').replaceChildren(...NAV.map(([id,l])=>h('a',{href:'#'+id,'aria-current':id===k?'page':'false'},ic(IC[id]),l)));
  $('#main').replaceChildren(V[k]())}
