@@ -59,3 +59,11 @@ aside { display:flex; flex-direction:column; }
 @media(max-width:760px) {
   .kantong-mobile-user-bar { display:block; padding:.45rem 1rem .2rem; }
 }
+
+.auth-google-panel { margin-top: .8rem; }
+.auth-divider { display:flex; align-items:center; gap:.8rem; color:var(--mute,#68736d); font-size:.8rem; margin:.8rem 0; }
+.auth-divider::before,.auth-divider::after { content:""; height:1px; background:var(--line,#e3e9e5); flex:1; }
+.auth-google { width:100%; min-height:46px; display:flex; justify-content:center; align-items:center; gap:.7rem; padding:.65rem 1rem; border:1px solid var(--line,#dce5df); border-radius:12px; background:#fff; color:#26332d; font:inherit; font-weight:650; cursor:pointer; }
+.auth-google:hover { background:#f8faf9; }
+.auth-google-mark { display:grid; place-items:center; width:1.35rem; height:1.35rem; border:1px solid #d6dfda; border-radius:50%; color:#4285f4; font-weight:850; font-family:Arial,sans-serif; }
+.auth-google:disabled { opacity:.55; cursor:wait; }
