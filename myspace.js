@@ -299,7 +299,7 @@
         }
       }},
         el('div', { className: 'ms-form-title' }, el('h2', {}, 'Tambah materi'), el('p', { className: 'mute sm' }, 'Unggah bahan kuliah dalam format PDF, gambar, atau video.')),
-        field('Nama materi', title), field('Mata kuliah / kategori', subject), field('Pilih file', file, 'Maksimal 100 MB per file.'),
+        field('Nama materi', title), field('Mata kuliah / kategori', subject), field('Pilih file', file, 'Maksimal 50 MB per file.'),
         el('button', { type: 'submit', className: 'btn' }, 'Simpan materi')
       );
       const list = filtered('material');
