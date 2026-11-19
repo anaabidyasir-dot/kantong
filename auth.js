@@ -14,6 +14,18 @@
     box.hidden = !text;
   }
 
+  function renderLoading() {
+    screen.innerHTML = '';
+    const card = document.createElement('section');
+    card.className = 'auth-card';
+    const heading = document.createElement('h1');
+    heading.textContent = 'Menyiapkan Kantong';
+    const p = document.createElement('p');
+    p.textContent = 'Memuat data akun dan menyelaraskan catatan keuangan serta MySpace. Jangan tutup halaman dulu.';
+    card.append(heading, p);
+    screen.append(card);
+  }
+
   function renderSetup() {
     screen.innerHTML = '';
     const card = document.createElement('section');
@@ -204,9 +216,12 @@
   function showSignedIn(session) {
     window.KANTONG_CURRENT_USER = session && session.user ? session.user : null;
     const signedIn = !!window.KANTONG_CURRENT_USER;
-    screen.hidden = signedIn;
-    document.body.classList.toggle('auth-signed-out', !signedIn);
-    document.body.classList.toggle('auth-booting', false);
+    const recovery = mode === 'recovery';
+    const loading = signedIn && !window.KANTONG_CLOUD_READY && !recovery;
+    if (loading) renderLoading();
+    screen.hidden = signedIn && !loading && !recovery;
+    document.body.classList.toggle('auth-signed-out', !signedIn || loading || recovery);
+    document.body.classList.toggle('auth-booting', loading);
 
     const buildUserBar = (id, className) => {
       let bar = document.getElementById(id);
