@@ -70,6 +70,9 @@ alter table public.myspace_items
   add column if not exists created_at timestamptz not null default now(),
   add column if not exists updated_at timestamptz not null default now();
 
+create unique index if not exists myspace_items_user_id_id_uidx
+  on public.myspace_items (user_id, id);
+
 create index if not exists myspace_items_user_updated_idx
   on public.myspace_items (user_id, updated_at desc);
 
