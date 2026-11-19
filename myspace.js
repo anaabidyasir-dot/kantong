@@ -78,7 +78,7 @@
       if (!cloudItems.length) {
         const localItems = await getAllLocal();
         if (localItems.length && window.confirm(
-          'Ditemukan ' + localItems.length + ' item MySpace lama di browser ini. Pindahkan ke akun yang sedang login?\\n\\nPilih "Batal" jika file/catatan ini bukan milik akun tersebut.'
+          'Ditemukan ' + localItems.length + ' item MySpace lama di browser ini. Pindahkan ke akun yang sedang login?\n\nPilih "Batal" jika file/catatan ini bukan milik akun tersebut.'
         )) {
           for (const item of localItems) await window.KantongCloud.saveMySpace(item);
           cloudItems = await window.KantongCloud.listMySpace();
