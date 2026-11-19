@@ -38,7 +38,8 @@
   };
   const localFinanceKey = userId => 'kantong.v1.user.' + userId;
   const pendingFinanceKey = userId => 'kantong.v1.pending.' + userId;
-  let lastLocalFinanceWrite = null;
+  const lastLocalFinanceWrite = new Map();
+  const legacyFinanceMigrationKey = 'kantong.v1.legacy-migration';
   const hasFinance = value => !!value && typeof value === 'object' &&
     ['tx', 'bud', 'goals', 'debts', 'tasks'].some(k =>
       Array.isArray(value[k]) ? value[k].length > 0 :
@@ -47,28 +48,39 @@
 
   let saveTimer = null;
   let pendingFinance = null;
+  let pendingFinanceUserId = null;
   let saveWaiters = [];
 
   async function flushFinance() {
-    if (!pendingFinance) return;
+    if (!pendingFinance || !pendingFinanceUserId) return;
     const snapshot = pendingFinance;
+    const queuedUserId = pendingFinanceUserId;
     const waiters = saveWaiters.slice();
     pendingFinance = null;
+    pendingFinanceUserId = null;
     saveWaiters = [];
     try {
       const user = await getUser();
+      if (user.id !== queuedUserId) {
+        throw new Error('Akun berubah sebelum sinkronisasi selesai. Data tetap disimpan pada cache akun asal; masuk kembali ke akun tersebut untuk menyinkronkannya.');
+      }
       const updatedAt = new Date().toISOString();
       const { error } = await client.from('user_data').upsert({
-        user_id: user.id,
+        user_id: queuedUserId,
         data: snapshot,
         updated_at: updatedAt
       }, { onConflict: 'user_id' });
       if (error) throw error;
-      lastLocalFinanceWrite = updatedAt;
-      if (!pendingFinance) localStorage.removeItem(pendingFinanceKey(user.id));
+      lastLocalFinanceWrite.set(queuedUserId, updatedAt);
+      if (!pendingFinance || pendingFinanceUserId !== queuedUserId) {
+        localStorage.removeItem(pendingFinanceKey(queuedUserId));
+      }
       waiters.forEach(w => w.resolve());
     } catch (error) {
-      if (!pendingFinance) pendingFinance = snapshot;
+      if (!pendingFinance || pendingFinanceUserId === queuedUserId) {
+        pendingFinance = snapshot;
+        pendingFinanceUserId = queuedUserId;
+      }
       waiters.forEach(w => w.reject(error));
       throw error;
     }
@@ -105,13 +117,19 @@
     }
 
     let initial = cached || null;
-    if (!initial) {
+    let acceptedLegacyMigration = false;
+    if (!initial && !localStorage.getItem(legacyFinanceMigrationKey)) {
       const legacy = parseJSON(localStorage.getItem('kantong.v1')) || initialData;
       if (hasFinance(legacy)) {
         const shouldImport = window.confirm(
-          'Ditemukan data Kantong lama di browser ini. Pindahkan data lama ke akun yang sedang digunakan?\n\nPilih "Batal" bila data tersebut bukan milik akun ini.'
+          'Ditemukan data Kantong lama di browser ini. Pindahkan data lama ke akun yang sedang digunakan?\n\nPilih "Batal" bila data tersebut bukan milik akun ini. Data lama tidak akan ditawarkan ke akun lain pada browser ini.'
         );
-        if (shouldImport) initial = legacy;
+        if (shouldImport) {
+          initial = legacy;
+          acceptedLegacyMigration = true;
+        } else {
+          localStorage.setItem(legacyFinanceMigrationKey, 'skipped');
+        }
       }
     }
 
@@ -122,6 +140,7 @@
       updated_at: new Date().toISOString()
     }, { onConflict: 'user_id' });
     if (insertError) throw insertError;
+    if (acceptedLegacyMigration) localStorage.setItem(legacyFinanceMigrationKey, user.id);
     localStorage.setItem(keyName, JSON.stringify(initial));
     localStorage.removeItem(pendingFinanceKey(user.id));
     return initial;
@@ -133,7 +152,19 @@
     const snapshot = JSON.parse(JSON.stringify(data));
     localStorage.setItem(localFinanceKey(userId), JSON.stringify(snapshot));
     localStorage.setItem(pendingFinanceKey(userId), '1');
+
+    if (pendingFinance && pendingFinanceUserId !== userId) {
+      if (saveTimer) clearTimeout(saveTimer);
+      saveTimer = null;
+      const accountChangedError = new Error('Akun berubah sebelum sinkronisasi selesai. Data akun sebelumnya tetap berada di cache akun asal.');
+      saveWaiters.forEach(w => w.reject(accountChangedError));
+      saveWaiters = [];
+      pendingFinance = null;
+      pendingFinanceUserId = null;
+    }
+
     pendingFinance = snapshot;
+    pendingFinanceUserId = userId;
     if (saveTimer) clearTimeout(saveTimer);
     const promise = new Promise((resolve, reject) => saveWaiters.push({ resolve, reject }));
     saveTimer = setTimeout(() => {
@@ -156,8 +187,8 @@
         table: 'user_data',
         filter: 'user_id=eq.' + userId
       }, payload => {
-        if (!payload.new || !payload.new.data || pendingFinance) return;
-        if (payload.new.updated_at && payload.new.updated_at === lastLocalFinanceWrite) return;
+        if (!payload.new || !payload.new.data || (pendingFinance && pendingFinanceUserId === userId)) return;
+        if (payload.new.updated_at && payload.new.updated_at === lastLocalFinanceWrite.get(userId)) return;
         onChange(payload.new.data, payload.new.updated_at);
       })
       .subscribe();
@@ -276,6 +307,9 @@
   };
 
   window.addEventListener('online', () => {
-    if (pendingFinance) flushFinance().catch(error => console.error(error));
+    const user = window.KANTONG_CURRENT_USER;
+    if (user && pendingFinance && pendingFinanceUserId === user.id) {
+      flushFinance().catch(error => console.error(error));
+    }
   });
 })();
