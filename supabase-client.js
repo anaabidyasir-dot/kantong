@@ -122,6 +122,7 @@
     }, { onConflict: 'user_id' });
     if (insertError) throw insertError;
     localStorage.setItem(keyName, JSON.stringify(initial));
+    localStorage.removeItem(pendingFinanceKey(user.id));
     return initial;
   }
 
