@@ -233,7 +233,19 @@ async function connectAccount(session){
   route();
  }catch(error){
   console.error('Kantong initial sync:',error);
-  toast('Data cloud belum dapat dimuat: '+(error.message||'periksa koneksi dan konfigurasi Supabase.'));
+  try{
+   const cached=localStorage.getItem('kantong.v1.user.'+user.id);
+   if(cached){
+    S=clean(JSON.parse(cached));
+    activeCloudUser=user.id;
+    route();
+    toast('Koneksi cloud belum tersedia. Menampilkan salinan lokal; perubahan akan dicoba sinkron saat internet kembali.');
+   }else{
+    toast('Data cloud belum dapat dimuat: '+(error.message||'periksa koneksi dan konfigurasi Supabase.'));
+   }
+  }catch(cacheError){
+   toast('Data cloud belum dapat dimuat. Periksa koneksi, lalu muat ulang halaman.');
+  }
  }finally{
   if(loadingCloudUser===user.id)loadingCloudUser=null;
  }
@@ -248,3 +260,4 @@ $('#dq').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTar
 addEventListener('hashchange',()=>{route();scrollTo(0,0)});
 route();
 
+\nwindow.addEventListener('online',()=>{\n const user=window.KANTONG_CURRENT_USER;\n if(user&&activeCloudUser===user.id&&!window.KANTONG_CLOUD_READY)connectAccount({user});\n});\n
