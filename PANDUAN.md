@@ -28,7 +28,7 @@ Panduan ini menjelaskan cara menggunakan setiap fitur, menjaga data tetap aman, 
 
 Buka Kantong melalui alamat website yang diberikan. Aplikasi dapat digunakan melalui komputer, tablet, maupun ponsel.
 
-Kantong menggunakan akun email dan kata sandi. Pilih **Daftar** untuk membuat akun baru, konfirmasi email apabila diminta, lalu **Masuk**. Gunakan akun yang sama ketika membuka Kantong dari HP, tablet, dan komputer agar data akun yang sama dapat disinkronkan.
+Kantong menyediakan dua cara masuk: email dan kata sandi, atau akun Google. Pilih **Daftar** untuk membuat akun email baru, atau **Lanjutkan dengan Google**. Konfirmasi email apabila diminta. Gunakan akun yang sama ketika membuka Kantong dari HP, tablet, dan komputer agar data akun yang sama dapat disinkronkan.
 
 Gunakan tombol **Catat** atau tombol **Catat transaksi baru** untuk menambahkan pemasukan maupun pengeluaran.
 
