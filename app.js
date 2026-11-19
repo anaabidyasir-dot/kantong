@@ -21,7 +21,25 @@ function clean(d){
  b.next=dt(d.next);return b
 }
 let S;try{S=clean(JSON.parse(localStorage.getItem(KEY)))}catch(e){S=blank()}
-function save(){try{localStorage.setItem(KEY,JSON.stringify(S));return true}catch(e){setTimeout(()=>toast('Penyimpanan browser gagal atau penuh. Perubahan ini belum tersimpan permanen; segera unduh cadangan.'),0);return false}}
+function save(){
+ try{
+  const cloud=window.KantongCloud;
+  const user=window.KANTONG_CURRENT_USER;
+  if(cloud&&cloud.isAuthenticated()&&user&&user.id){
+   localStorage.setItem('kantong.v1.user.'+user.id,JSON.stringify(S));
+   cloud.saveFinance(S).catch(e=>{
+    console.error('Kantong sync:',e);
+    toast('Perubahan tersimpan di perangkat ini, tetapi belum tersinkron. Periksa internet lalu coba lagi.');
+   });
+  }else{
+   localStorage.setItem(KEY,JSON.stringify(S));
+  }
+  return true;
+ }catch(e){
+  setTimeout(()=>toast('Penyimpanan browser gagal atau penuh. Perubahan ini belum tersimpan permanen; unduh cadangan.'),0);
+  return false;
+ }
+}
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const rp=n=>new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(n);
 const pad=n=>String(n).padStart(2,'0');
@@ -162,19 +180,111 @@ V.data=()=>{
  const fi=h('input',{type:'file',accept:'.json,application/json'});
  fi.addEventListener('change',()=>{const f=fi.files[0];if(!f)return;if(f.size>2e6)return toast('File terlalu besar.');
   const r=new FileReader();r.onload=()=>{try{const parsed=JSON.parse(r.result);if(!parsed||typeof parsed!=='object'||Array.isArray(parsed))throw new Error('Format tidak sesuai');const n=clean(parsed);if(confirm('Ganti semua data sekarang dengan isi cadangan ini?')){S=n;const ok=save();route();if(ok)toast('Cadangan berhasil dipulihkan.')}}catch(e){toast('File bukan cadangan Kantong yang valid atau isinya rusak.')}};r.onerror=()=>toast('File cadangan tidak berhasil dibaca.');r.readAsText(f)});
- return h('div',{},head('Data','Pengaturan, pencadangan, dan privasi.'),
+ const syncText=window.KANTONG_CLOUD_READY
+  ? 'Data akun tersimpan di cloud dan disinkronkan ke perangkat lain saat terhubung internet. File MySpace disimpan privat.'
+  : 'Sinkronisasi cloud belum siap. Perubahan tersimpan pada perangkat ini dan akan dicoba dikirim saat koneksi kembali. Unduh cadangan secara berkala.';
+ return h('div',{},head('Data','Akun, sinkronisasi, pencadangan, dan privasi.'),
   h('section',{class:'pn'},h('h2',{},'Tanggal kiriman berikutnya'),h('p',{class:'mute sm'},'Dipakai untuk menghitung jatah harian di Beranda.'),fld('Tanggal',nx)),
-  h('section',{class:'pn',style:'margin-top:1rem'},h('h2',{},'Cadangan'),h('p',{class:'mute sm'},'Data disimpan di penyimpanan lokal browser pada perangkat ini, bukan di server. Data tidak otomatis pindah ke HP atau browser lain. Jika data situs dihapus, perangkat hilang, atau penyimpanan browser dibersihkan, data bisa hilang. Unduh cadangan secara rutin dan simpan file JSON di tempat yang aman.'),
+  h('section',{class:'pn',style:'margin-top:1rem'},h('h2',{},'Sinkronisasi dan cadangan'),h('p',{class:'mute sm'},syncText+' File cadangan JSON tetap penting karena paket gratis tidak menyediakan backup database otomatis harian. Simpan hasil unduhan di tempat yang aman.'),
    h('div',{class:'inl'},h('button',{class:'btn',onclick:()=>{const url=URL.createObjectURL(new Blob([JSON.stringify(S,null,1)],{type:'application/json'})),a=h('a',{href:url,download:'kantong-cadangan-'+today()+'.json'});document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000)}},'Unduh cadangan')),
    h('div',{style:'margin-top:1rem'},fld('Pulihkan dari file cadangan',fi))),
   h('section',{class:'pn',style:'margin-top:1rem'},h('h2',{},'Hapus semua data'),h('p',{class:'mute sm'},'Peringatan: file cadangan berisi catatan keuangan dalam bentuk yang dapat dibaca. Jangan bagikan kepada orang lain.'),h('button',{class:'btn ghost',onclick:()=>{if(confirm('Hapus semua data? Ini tidak bisa dibatalkan.')){S=blank();save();route()}}},'Hapus semua data')))};
 
 const NAV=[['beranda','Beranda'],['transaksi','Transaksi'],['anggaran','Anggaran'],['tabungan','Tabungan'],['utang','Utang'],['tugas','Tugas'],['myspace','MySpace'],['data','Data']];
-function route(){const k=Object.prototype.hasOwnProperty.call(V,location.hash.slice(1))?location.hash.slice(1):'beranda';
+function route(){
+ if(typeof window.cleanupMySpace==='function'){window.cleanupMySpace();window.cleanupMySpace=null;}
+ const k=Object.prototype.hasOwnProperty.call(V,location.hash.slice(1))?location.hash.slice(1):'beranda';
  $('#nav').replaceChildren(...NAV.map(([id,l])=>h('a',{href:'#'+id,'aria-current':id===k?'page':'false'},ic(IC[id]),l)));
- $('#main').replaceChildren(V[k]())}
+ $('#main').replaceChildren(V[k]());
+}
+let cloudChannel=null,activeCloudUser=null,loadingCloudUser=null;
+async function connectAccount(session){
+ const user=session&&session.user?session.user:null;
+ if(!user){
+  window.KANTONG_CLOUD_READY=false;
+  activeCloudUser=null;
+  loadingCloudUser=null;
+  if(cloudChannel&&window.KantongCloud&&window.KantongCloud.client){
+   window.KantongCloud.client.removeChannel(cloudChannel).catch(()=>{});
+   cloudChannel=null;
+  }
+  S=blank();
+  route();
+  return;
+ }
+ if(activeCloudUser===user.id&&window.KANTONG_CLOUD_READY)return;
+ if(loadingCloudUser===user.id)return;
+ loadingCloudUser=user.id;
+ const keepCached=activeCloudUser===user.id;
+ window.KANTONG_CLOUD_READY=false;
+ if(!keepCached){S=blank();route();}
+ const authScreen=document.getElementById('auth-screen');
+ if(authScreen){
+  authScreen.replaceChildren(h('section',{class:'auth-card'},
+   h('h1',{},keepCached?'Menyambungkan kembali':'Menyiapkan Kantong'),
+   h('p',{},'Sedang menyelaraskan catatan akun. Jangan tutup halaman dulu.')));
+  authScreen.hidden=false;
+ }
+ document.body.classList.add('auth-booting','auth-signed-out');
+ try{
+  const initial=await window.KantongCloud.loadFinance(S);
+  if(!window.KANTONG_CURRENT_USER||window.KANTONG_CURRENT_USER.id!==user.id)return;
+  S=clean(initial);
+  activeCloudUser=user.id;
+  window.KANTONG_CLOUD_READY=true;
+  const authScreen=document.getElementById('auth-screen');
+  if(authScreen)authScreen.hidden=true;
+  document.body.classList.remove('auth-booting','auth-signed-out');
+  if(cloudChannel)await window.KantongCloud.client.removeChannel(cloudChannel);
+  cloudChannel=window.KantongCloud.subscribeFinance((data)=>{
+   if(!window.KANTONG_CURRENT_USER||window.KANTONG_CURRENT_USER.id!==user.id)return;
+   const incoming=clean(data);
+   if(JSON.stringify(incoming)===JSON.stringify(S))return;
+   S=incoming;
+   try{localStorage.setItem('kantong.v1.user.'+user.id,JSON.stringify(S))}catch(e){console.warn('Local cache unavailable',e)}
+   route();
+   toast('Data dari perangkat lain berhasil disinkronkan.');
+  });
+  route();
+ }catch(error){
+  console.error('Kantong initial sync:',error);
+  try{
+   const cached=localStorage.getItem('kantong.v1.user.'+user.id);
+   if(cached){
+    S=clean(JSON.parse(cached));
+    activeCloudUser=user.id;
+    const authScreen=document.getElementById('auth-screen');
+    if(authScreen)authScreen.hidden=true;
+    document.body.classList.remove('auth-booting','auth-signed-out');
+    route();
+    toast('Koneksi cloud belum tersedia. Menampilkan salinan lokal; perubahan akan dicoba sinkron saat internet kembali.');
+   }else{
+    const authScreen=document.getElementById('auth-screen');
+    if(authScreen){
+     authScreen.hidden=false;
+     const card=h('section',{class:'auth-card'},h('h1',{},'Data belum bisa dimuat'),h('p',{},error.message||'Periksa koneksi dan konfigurasi Supabase.'),h('button',{class:'btn',onclick:()=>connectAccount({user})},'Coba lagi'));
+     authScreen.replaceChildren(card);
+    }
+   }
+  }catch(cacheError){
+   toast('Data cloud belum dapat dimuat. Periksa koneksi, lalu muat ulang halaman.');
+  }
+ }finally{
+  if(loadingCloudUser===user.id)loadingCloudUser=null;
+ }
+}
+window.addEventListener('kantong-auth-change',event=>connectAccount(event.detail&&event.detail.session));
+window.addEventListener('kantong-cloud-error',event=>{
+ const message=event.detail&&event.detail.message;
+ toast('Sinkronisasi belum berhasil'+(message?': '+message:'')+'. Data lokal masih tersedia.');
+});
 $('#fab').append(ic(IC.plus),h('span',{},'Catat'));$('#fab').addEventListener('click',openAdd);
 $('#dq').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.close()});
 addEventListener('hashchange',()=>{route();scrollTo(0,0)});
 route();
 
+
+window.addEventListener('online',()=>{
+ const user=window.KANTONG_CURRENT_USER;
+ if(user&&!window.KANTONG_CLOUD_READY&&!loadingCloudUser)connectAccount({user});
+});

@@ -9,10 +9,16 @@
 <title>Kantong — Pencatat Keuangan Mahasiswa</title>
 <link rel="stylesheet" href="styles.css">
 <link rel="stylesheet" href="myspace.css">
+<link rel="stylesheet" href="auth.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.1" defer></script>
+<script src="supabase-config.js" defer></script>
+<script src="supabase-client.js" defer></script>
+<script src="auth.js" defer></script>
 <script src="myspace.js" defer></script>
 <script src="app.js" defer></script>
 </head>
-<body>
+<body class="auth-booting">
+<div id="auth-screen" role="main" aria-live="polite"></div>
 <div class="app">
  <aside>
   <div class="brand"><span class="brand-mark" aria-hidden="true">K</span><span>Kantong</span></div>
