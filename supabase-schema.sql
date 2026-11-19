@@ -73,6 +73,24 @@ alter table public.myspace_items
 create unique index if not exists myspace_items_user_id_id_uidx
   on public.myspace_items (user_id, id);
 
+-- Some early Kantong databases used a required legacy column named item_type.
+-- The current app writes the "type" column instead. Keep the legacy column,
+-- but make it optional when it exists so inserts from the current app succeed.
+do $
+begin
+  if exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'myspace_items'
+      and column_name = 'item_type'
+  ) then
+    alter table public.myspace_items
+      alter column item_type drop not null;
+  end if;
+end
+$;
+
 create index if not exists myspace_items_user_updated_idx
   on public.myspace_items (user_id, updated_at desc);
 
