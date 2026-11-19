@@ -25,50 +25,38 @@ create unique index if not exists myspace_items_user_id_id_uidx
 create index if not exists myspace_items_user_updated_idx
   on public.myspace_items (user_id, updated_at desc);
 
--- These fields are intentionally NULL for one of the two item types:
--- notes have no file metadata; materials have no text content.
--- Legacy versions sometimes created them as NOT NULL.
+-- The current app only requires these fields on every row.
+-- Other columns are optional depending on whether an item is a note or material.
+-- Older Kantong databases may also contain legacy fields (for example item_type)
+-- that the current app does not send. Make those fields nullable rather than
+-- forcing the browser client to invent old-schema values.
 do $compat$
+declare
+  legacy_column record;
 begin
-  if exists (
-    select 1 from information_schema.columns
-    where table_schema = 'public' and table_name = 'myspace_items'
-      and column_name = 'content'
-  ) then
-    alter table public.myspace_items alter column content drop not null;
-  end if;
-
-  if exists (
-    select 1 from information_schema.columns
-    where table_schema = 'public' and table_name = 'myspace_items'
-      and column_name = 'file_path'
-  ) then
-    alter table public.myspace_items alter column file_path drop not null;
-  end if;
-
-  if exists (
-    select 1 from information_schema.columns
-    where table_schema = 'public' and table_name = 'myspace_items'
-      and column_name = 'file_name'
-  ) then
-    alter table public.myspace_items alter column file_name drop not null;
-  end if;
-
-  if exists (
-    select 1 from information_schema.columns
-    where table_schema = 'public' and table_name = 'myspace_items'
-      and column_name = 'mime'
-  ) then
-    alter table public.myspace_items alter column mime drop not null;
-  end if;
-
-  if exists (
-    select 1 from information_schema.columns
-    where table_schema = 'public' and table_name = 'myspace_items'
-      and column_name = 'item_type'
-  ) then
-    alter table public.myspace_items alter column item_type drop not null;
-  end if;
+  for legacy_column in
+    select attribute.attname as column_name
+    from pg_attribute as attribute
+    where attribute.attrelid = 'public.myspace_items'::regclass
+      and attribute.attnum > 0
+      and not attribute.attisdropped
+      and attribute.attnotnull
+      and attribute.attname <> all (array[
+        'user_id',
+        'id',
+        'type',
+        'title',
+        'subject',
+        'size',
+        'created_at',
+        'updated_at'
+      ])
+  loop
+    execute format(
+      'alter table public.myspace_items alter column %I drop not null',
+      legacy_column.column_name
+    );
+  end loop;
 end
 $compat$;
 
