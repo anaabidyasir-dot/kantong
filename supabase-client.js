@@ -63,6 +63,7 @@
       if (error) throw error;
       waiters.forEach(w => w.resolve());
     } catch (error) {
+      if (!pendingFinance) pendingFinance = snapshot;
       waiters.forEach(w => w.reject(error));
       throw error;
     }
