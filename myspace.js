@@ -118,20 +118,24 @@
       if (legacyItems.length) {
         const remoteIds = new Set(cloudItems.map(item => String(item.id)));
         const itemsToMigrate = legacyItems.filter(item => !remoteIds.has(String(item.id)));
-        const shouldImport = window.confirm(
-          'Ditemukan ' + itemsToMigrate.length + ' item MySpace lama yang belum ada di akun ini. Pindahkan ke akun yang sedang login?\n\nPilih "Batal" bila data tersebut bukan milik akun ini. Data lokal tidak akan ditawarkan ke akun lain pada browser ini.'
-        );
-        if (shouldImport) {
-          let migrated = 0;
-          for (const item of itemsToMigrate) {
-            await window.KantongCloud.saveMySpace(item);
-            migrated += 1;
-          }
+        if (!itemsToMigrate.length) {
           localStorage.setItem(MYSPACE_MIGRATION_KEY, userId);
-          cloudItems = await window.KantongCloud.listMySpace();
-          if (migrated) notify(migrated + ' item MySpace berhasil dipindahkan ke akun cloud. Salinan lokal lama tetap disimpan sebagai cadangan.');
         } else {
-          localStorage.setItem(MYSPACE_MIGRATION_KEY, 'skipped');
+          const shouldImport = window.confirm(
+            'Ditemukan ' + itemsToMigrate.length + ' item MySpace lama yang belum ada di akun ini. Pindahkan ke akun yang sedang login?\n\nPilih "Batal" bila data tersebut bukan milik akun ini. Data lokal tidak akan ditawarkan ke akun lain pada browser ini.'
+          );
+          if (shouldImport) {
+            let migrated = 0;
+            for (const item of itemsToMigrate) {
+              await window.KantongCloud.saveMySpace(item);
+              migrated += 1;
+            }
+            localStorage.setItem(MYSPACE_MIGRATION_KEY, userId);
+            cloudItems = await window.KantongCloud.listMySpace();
+            if (migrated) notify(migrated + ' item MySpace berhasil dipindahkan ke akun cloud. Salinan lokal lama tetap disimpan sebagai cadangan.');
+          } else {
+            localStorage.setItem(MYSPACE_MIGRATION_KEY, 'skipped');
+          }
         }
       }
       return cloudItems;
