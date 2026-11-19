@@ -3,7 +3,7 @@
   'use strict';
   const screen = document.getElementById('auth-screen');
   const $ = selector => screen.querySelector(selector);
-  let mode = 'login';
+  let mode = window.location.hash.includes('type=recovery') ? 'recovery' : 'login';
   let busy = false;
 
   function message(text, kind) {
@@ -53,14 +53,16 @@
     brand.append(mark, brandText);
 
     const title = document.createElement('h1');
-    title.textContent = mode === 'signup' ? 'Buat akun Kantong' : mode === 'reset' ? 'Atur ulang kata sandi' : 'Selamat datang kembali';
+    title.textContent = mode === 'signup' ? 'Buat akun Kantong' : mode === 'reset' ? 'Atur ulang kata sandi' : mode === 'recovery' ? 'Buat kata sandi baru' : 'Selamat datang kembali';
     const intro = document.createElement('p');
     intro.className = 'auth-intro';
     intro.textContent = mode === 'signup'
       ? 'Buat akun gratis untuk menyimpan data dan membukanya dari HP maupun komputer.'
       : mode === 'reset'
         ? 'Masukkan email akunmu. Kami akan mengirim tautan untuk mengatur ulang kata sandi.'
-        : 'Masuk untuk melanjutkan catatan keuangan dan ruang belajarmu.';
+        : mode === 'recovery'
+          ? 'Buat kata sandi baru untuk melindungi akun Kantongmu.'
+          : 'Masuk untuk melanjutkan catatan keuangan dan ruang belajarmu.';
 
     const form = document.createElement('form');
     form.className = 'auth-form';
@@ -74,7 +76,7 @@
     email.required = true;
     email.maxLength = 254;
     email.placeholder = 'nama@email.com';
-    emailLabel.append(email);
+    emailLabel.append(email);\n    if (mode !== 'recovery') form.append(emailLabel);
 
     let password = null;
     let passwordLabel = null;
@@ -83,17 +85,17 @@
       passwordLabel.textContent = 'Kata sandi';
       password = document.createElement('input');
       password.type = 'password';
-      password.autocomplete = mode === 'signup' ? 'new-password' : 'current-password';
+      password.autocomplete = mode === 'signup' || mode === 'recovery' ? 'new-password' : 'current-password';
       password.minLength = 8;
       password.required = true;
-      password.placeholder = mode === 'signup' ? 'Minimal 8 karakter' : 'Masukkan kata sandi';
+      password.placeholder = mode === 'signup' || mode === 'recovery' ? 'Minimal 8 karakter' : 'Masukkan kata sandi';
       passwordLabel.append(password);
     }
 
     const submit = document.createElement('button');
     submit.type = 'submit';
     submit.className = 'btn auth-submit';
-    submit.textContent = mode === 'signup' ? 'Buat akun' : mode === 'reset' ? 'Kirim tautan reset' : 'Masuk';
+    submit.textContent = mode === 'signup' ? 'Buat akun' : mode === 'reset' ? 'Kirim tautan reset' : mode === 'recovery' ? 'Simpan kata sandi baru' : 'Masuk';
 
     form.append(emailLabel);
     if (passwordLabel) form.append(passwordLabel);
@@ -130,8 +132,8 @@
     form.addEventListener('submit', async event => {
       event.preventDefault();
       if (busy) return;
-      if (!email.value.trim() || (password && password.value.length < 8)) {
-        status.textContent = password ? 'Masukkan email dan kata sandi minimal 8 karakter.' : 'Masukkan alamat email yang benar.';
+      if ((mode !== 'recovery' && (!email.value.trim() || !email.validity.valid)) || (password && password.value.length < 8)) {
+        status.textContent = mode === 'recovery' ? 'Kata sandi harus memiliki minimal 8 karakter.' : password ? 'Masukkan email yang benar dan kata sandi minimal 8 karakter.' : 'Masukkan alamat email yang benar.';
         status.className = 'auth-message error';
         status.hidden = false;
         return;
@@ -166,6 +168,14 @@
           status.textContent = 'Jika email terdaftar, tautan reset akan dikirim ke kotak masukmu.';
           status.className = 'auth-message success';
           status.hidden = false;
+        } else if (mode === 'recovery') {
+          result = await client.auth.updateUser({ password: password.value });
+          if (result.error) throw result.error;
+          const { error: signOutError } = await client.auth.signOut();
+          if (signOutError) throw signOutError;
+          mode = 'login';
+          renderAuth();
+          message('Kata sandi berhasil diubah. Silakan masuk dengan kata sandi baru.', 'success');
         } else {
           result = await client.auth.signInWithPassword({
             email: email.value.trim(),
@@ -183,7 +193,7 @@
       } finally {
         busy = false;
         submit.disabled = false;
-        submit.textContent = mode === 'signup' ? 'Buat akun' : mode === 'reset' ? 'Kirim tautan reset' : 'Masuk';
+        submit.textContent = mode === 'signup' ? 'Buat akun' : mode === 'reset' ? 'Kirim tautan reset' : mode === 'recovery' ? 'Simpan kata sandi baru' : 'Masuk';
       }
     });
 
@@ -242,7 +252,7 @@
 
     window.setTimeout(() => {
       window.dispatchEvent(new CustomEvent('kantong-auth-change', {
-        detail: { session: session || null }
+        detail: { session: mode === 'recovery' ? null : session || null }
       }));
     }, 0);
   }
