@@ -25,20 +25,49 @@ create unique index if not exists myspace_items_user_id_id_uidx
 create index if not exists myspace_items_user_updated_idx
   on public.myspace_items (user_id, updated_at desc);
 
--- Some early Kantong databases used a required legacy column named item_type.
--- The current app writes the "type" column instead. Keep the legacy column,
--- but make it optional when it exists so inserts from the current app succeed.
+-- These fields are intentionally NULL for one of the two item types:
+-- notes have no file metadata; materials have no text content.
+-- Legacy versions sometimes created them as NOT NULL.
 do $compat$
 begin
   if exists (
-    select 1
-    from information_schema.columns
-    where table_schema = 'public'
-      and table_name = 'myspace_items'
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'myspace_items'
+      and column_name = 'content'
+  ) then
+    alter table public.myspace_items alter column content drop not null;
+  end if;
+
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'myspace_items'
+      and column_name = 'file_path'
+  ) then
+    alter table public.myspace_items alter column file_path drop not null;
+  end if;
+
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'myspace_items'
+      and column_name = 'file_name'
+  ) then
+    alter table public.myspace_items alter column file_name drop not null;
+  end if;
+
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'myspace_items'
+      and column_name = 'mime'
+  ) then
+    alter table public.myspace_items alter column mime drop not null;
+  end if;
+
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'myspace_items'
       and column_name = 'item_type'
   ) then
-    alter table public.myspace_items
-      alter column item_type drop not null;
+    alter table public.myspace_items alter column item_type drop not null;
   end if;
 end
 $compat$;
