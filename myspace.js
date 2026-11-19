@@ -3,7 +3,7 @@
   'use strict';
   const DB_NAME = 'kantong-myspace-v1';
   const STORE = 'items';
-  const MAX_FILE_SIZE = 100 * 1024 * 1024;
+  const MAX_FILE_SIZE = 50 * 1024 * 1024;
   let dbPromise = null;
 
   function el(tag, attrs, ...children) {
@@ -38,7 +38,7 @@
     return dbPromise;
   }
 
-  async function getAll() {
+  async function getAllLocal() {
     const db = await openDB();
     return new Promise((resolve, reject) => {
       const request = db.transaction(STORE, 'readonly').objectStore(STORE).getAll();
@@ -47,25 +47,63 @@
     });
   }
 
-  async function saveItem(item) {
+  async function saveLocalItem(item) {
     const db = await openDB();
     return new Promise((resolve, reject) => {
       const tx = db.transaction(STORE, 'readwrite');
       tx.objectStore(STORE).put(item);
       tx.oncomplete = resolve;
-      tx.onerror = () => reject(tx.error || new Error('Gagal menyimpan. Ruang penyimpanan browser mungkin penuh.'));
+      tx.onerror = () => reject(tx.error || new Error('Gagal menyimpan cadangan MySpace lokal.'));
       tx.onabort = () => reject(tx.error || new Error('Penyimpanan dibatalkan.'));
     });
   }
 
-  async function removeItem(id) {
+  async function removeLocalItem(id) {
     const db = await openDB();
     return new Promise((resolve, reject) => {
       const tx = db.transaction(STORE, 'readwrite');
       tx.objectStore(STORE).delete(id);
       tx.oncomplete = resolve;
-      tx.onerror = () => reject(tx.error || new Error('Gagal menghapus item.'));
+      tx.onerror = () => reject(tx.error || new Error('Gagal menghapus item lokal.'));
     });
+  }
+
+  function cloudEnabled() {
+    return !!(window.KantongCloud && window.KantongCloud.configured && window.KantongCloud.isAuthenticated());
+  }
+
+  async function getAll() {
+    if (cloudEnabled()) {
+      let cloudItems = await window.KantongCloud.listMySpace();
+      if (!cloudItems.length) {
+        const localItems = await getAllLocal();
+        if (localItems.length && window.confirm(
+          'Ditemukan ' + localItems.length + ' item MySpace lama di browser ini. Pindahkan ke akun yang sedang login?\\n\\nPilih "Batal" jika file/catatan ini bukan milik akun tersebut.'
+        )) {
+          for (const item of localItems) await window.KantongCloud.saveMySpace(item);
+          cloudItems = await window.KantongCloud.listMySpace();
+          notify('MySpace lama berhasil dipindahkan ke akun cloud. Salinan lokal tetap disimpan sebagai cadangan.');
+        }
+      }
+      return cloudItems;
+    }
+    return getAllLocal();
+  }
+
+  async function saveItem(item) {
+    if (cloudEnabled()) {
+      const saved = await window.KantongCloud.saveMySpace(item);
+      try { await saveLocalItem(item); }
+      catch (error) { console.warn('MySpace local backup was not updated:', error); }
+      return saved;
+    }
+    await saveLocalItem(item);
+    return item;
+  }
+
+  async function removeItem(id, item) {
+    if (cloudEnabled()) await window.KantongCloud.deleteMySpace(item || id);
+    await removeLocalItem(id);
   }
 
   const uid = () => window.crypto && crypto.randomUUID ? crypto.randomUUID() : 'ms-' + Date.now() + '-' + Math.random().toString(36).slice(2);
@@ -82,7 +120,7 @@
   const field = (label, input, hint) => el('label', { className: 'ms-field' }, el('span', {}, label), input, hint ? el('small', { className: 'ms-hint' }, hint) : null);
   const button = (label, cls, onClick) => el('button', { type: 'button', className: cls, onClick: onClick }, label);
 
-  function openRecord(item, refresh) {
+  async function openRecord(item, refresh) {
     const dialog = el('dialog', { className: 'ms-dialog' });
     let objectUrl = null;
     const close = () => { if (dialog.open) dialog.close(); else dialog.remove(); };
@@ -136,17 +174,24 @@
 
     if (item.type === 'note') showNote();
     else {
-      objectUrl = URL.createObjectURL(item.blob);
-      let preview;
-      if (item.mime.startsWith('image/')) preview = el('img', { className: 'ms-preview-image', src: objectUrl, alt: item.title });
-      else if (item.mime.startsWith('video/')) preview = el('video', { className: 'ms-preview-video', src: objectUrl, controls: true, playsinline: true });
-      else preview = el('iframe', { className: 'ms-preview-pdf', src: objectUrl, title: 'Pratinjau ' + item.title });
-      dialog.replaceChildren(
-        header(item.title),
-        el('div', { className: 'ms-preview-wrap' }, preview),
-        el('p', { className: 'ms-dialog-meta' }, item.fileName + ' · ' + sizeText(item.size) + ' · Ditambahkan ' + dateText(item.createdAt)),
-        actions(el('a', { className: 'btn ghost', href: objectUrl, download: item.fileName }, 'Unduh file'), button('Tutup', 'btn', close))
-      );
+      try {
+        if (item.blob) objectUrl = URL.createObjectURL(item.blob);
+        else if (item.filePath && cloudEnabled()) objectUrl = await window.KantongCloud.createMySpaceSignedUrl(item.filePath);
+        else throw new Error('File tidak ditemukan. Coba unggah ulang dari perangkat asal.');
+        let preview;
+        if (item.mime.startsWith('image/')) preview = el('img', { className: 'ms-preview-image', src: objectUrl, alt: item.title });
+        else if (item.mime.startsWith('video/')) preview = el('video', { className: 'ms-preview-video', src: objectUrl, controls: true, playsinline: true });
+        else preview = el('iframe', { className: 'ms-preview-pdf', src: objectUrl, title: 'Pratinjau ' + item.title });
+        dialog.replaceChildren(
+          header(item.title),
+          el('div', { className: 'ms-preview-wrap' }, preview),
+          el('p', { className: 'ms-dialog-meta' }, item.fileName + ' · ' + sizeText(item.size) + ' · Ditambahkan ' + dateText(item.createdAt)),
+          actions(el('a', { className: 'btn ghost', href: objectUrl, download: item.fileName }, 'Unduh file'), button('Tutup', 'btn', close))
+        );
+      } catch (error) {
+        dialog.replaceChildren(header(item.title), el('p', { className: 'ms-error' }, error.message || 'File tidak dapat dibuka.'), actions(button('Tutup', 'btn', close)));
+        notify(error.message || 'File tidak dapat dibuka.');
+      }
     }
     dialog.addEventListener('close', () => {
       if (objectUrl) URL.revokeObjectURL(objectUrl);
@@ -173,7 +218,9 @@
     const tabs = el('div', { className: 'ms-tabs', role: 'tablist', 'aria-label': 'Jenis konten MySpace' });
     const search = el('input', { type: 'search', placeholder: 'Cari judul atau mata kuliah...', 'aria-label': 'Cari materi atau catatan' });
     const panel = el('div', { className: 'ms-panel' });
-    const info = el('p', { className: 'ms-local-note' }, 'Penyimpanan lokal: file dan catatan tersimpan di browser serta perangkat ini. Data belum tersinkron ke perangkat lain. Jangan hapus data situs/browser sebelum membuat salinan file penting.');
+    const info = el('p', { className: 'ms-local-note' }, cloudEnabled()
+      ? 'MySpace tersinkron ke akun Kantong. File disimpan privat dan hanya dapat dibuka oleh akunmu. Salinan lokal pada browser ini dipertahankan sebagai cadangan.'
+      : 'Penyimpanan lokal: file dan catatan tersimpan di browser serta perangkat ini. Data belum tersinkron ke perangkat lain.');
     let active = 'material';
     let records = [];
 
@@ -182,14 +229,19 @@
       return records.filter(item => item.type === type && (!query || (item.title + ' ' + (item.subject || '')).toLocaleLowerCase('id-ID').includes(query))).sort((a, b) => b.updatedAt - a.updatedAt);
     }
     async function refresh() {
-      try { records = await getAll(); renderPanel(); }
-      catch (error) {
+      try {
+        records = await getAll();
+        info.textContent = cloudEnabled()
+          ? 'MySpace tersinkron ke akun Kantong. File disimpan privat dan hanya dapat dibuka oleh akunmu. Salinan lokal pada browser ini dipertahankan sebagai cadangan.'
+          : 'Penyimpanan lokal: file dan catatan tersimpan di browser serta perangkat ini. Data belum tersinkron ke perangkat lain.';
+        renderPanel();
+      } catch (error) {
         panel.replaceChildren(el('div', { className: 'ms-error' }, el('b', {}, 'MySpace belum bisa dibuka'), el('p', {}, error.message), button('Coba lagi', 'btn', refresh)));
       }
     }
     async function deleteRecord(item) {
       if (!window.confirm('Hapus "' + item.title + '"?')) return;
-      try { await removeItem(item.id); await refresh(); notify('Item berhasil dihapus.'); }
+      try { await removeItem(item.id, item); await refresh(); notify('Item berhasil dihapus.'); }
       catch (error) { notify(error.message || 'Item gagal dihapus.'); }
     }
     const empty = (title, description) => el('div', { className: 'ms-empty' }, el('span', { className: 'ms-empty-icon' }, '✦'), el('b', {}, title), el('p', {}, description));
