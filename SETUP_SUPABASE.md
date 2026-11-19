@@ -21,7 +21,17 @@ Project URL yang sudah dipakai di konfigurasi awal adalah `https://bfzmexooierkb
 4. Tempel ke SQL Editor, lalu tekan **Run**.
 5. Pastikan query selesai tanpa pesan error. File ini membuat tabel data keuangan, tabel MySpace, bucket file privat, dan Row Level Security (RLS) untuk memisahkan data tiap akun.
 
-**Penting untuk database yang sudah pernah dipakai:** menjalankan `CREATE TABLE IF NOT EXISTS` saja tidak menambahkan kolom baru ke tabel lama. Skema terbaru repo sudah menyertakan perintah `ALTER TABLE ... ADD COLUMN IF NOT EXISTS file_path` untuk memperbaikinya. Bila error `Could not find the 'file_path' column of 'myspace_items' in the schema cache` masih muncul, jalankan file `supabase-migrations/20261119_fix_myspace_file_path.sql` satu kali melalui **SQL Editor → New query → Run**. Perintah ini hanya menambahkan kolom yang belum ada dan meminta Supabase memuat ulang schema cache; tidak menghapus catatan atau file yang sudah tersimpan.
+**Penting untuk database yang sudah pernah dipakai:** menjalankan `CREATE TABLE IF NOT EXISTS` saja tidak menambahkan kolom baru ke tabel lama. Karena itu, jalankan migrasi lengkap `supabase-migrations/20261119_repair_myspace_schema.sql` melalui **SQL Editor → New query → Run**. Migrasi ini memastikan seluruh kolom yang dipakai aplikasi tersedia, termasuk `file_path`, `file_name`, dan `mime`. Migrasi aman dijalankan berulang kali dan tidak menghapus baris data maupun file yang sudah tersimpan.
+
+Setelah selesai, periksa kolom dengan query berikut:
+
+```sql
+SELECT column_name, data_type
+FROM information_schema.columns
+WHERE table_schema = 'public'
+  AND table_name = 'myspace_items'
+ORDER BY ordinal_position;
+```
 
 Jangan menghapus tabel `myspace_items`, jangan membuat ulang database, dan jangan melemahkan policy RLS. Jangan membuat bucket MySpace menjadi public.
 
