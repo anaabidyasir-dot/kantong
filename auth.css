@@ -15,7 +15,7 @@ body.auth-booting #fab,
 body.auth-booting #dq,
 body.auth-signed-out .app,
 body.auth-signed-out #fab,
-body.auth-signed-out #dq { visibility: hidden; }
+body.auth-signed-out #dq { display: none !important; }
 .auth-card {
   width: min(100%, 440px);
   padding: clamp(1.4rem, 4vw, 2rem);
@@ -48,4 +48,12 @@ body.auth-signed-out #dq { visibility: hidden; }
   .auth-card { border-radius:20px; }
   .kantong-user-bar { padding:.65rem .4rem; }
   .kantong-user-email { font-size:.68rem; }
+}
+
+.kantong-mobile-user-bar { display:none; }
+.kantong-mobile-user-inner { display:flex; align-items:center; justify-content:space-between; gap:.75rem; width:100%; }
+.kantong-mobile-user-inner .kantong-user-email { flex:1; min-width:0; }
+.kantong-mobile-user-inner .kantong-logout { width:auto; flex:none; padding:.35rem .7rem; font-size:.78rem; }
+@media(max-width:760px) {
+  .kantong-mobile-user-bar { display:block; padding:.45rem 1rem .2rem; }
 }
