@@ -280,7 +280,8 @@
       return;
     }
     renderAuth();
-    window.KantongCloud.client.auth.onAuthStateChange((_event, session) => {
+    window.KantongCloud.client.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') mode = 'recovery';
       showSignedIn(session);
     });
     const { data, error } = await window.KantongCloud.client.auth.getSession();
