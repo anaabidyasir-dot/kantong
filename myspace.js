@@ -360,6 +360,12 @@
     );
     renderTabs();
     refresh();
+    if (cloudEnabled() && typeof window.KantongCloud.subscribeMySpace === 'function') {
+      const channel = window.KantongCloud.subscribeMySpace(() => refresh());
+      window.cleanupMySpace = () => {
+        if (channel) window.KantongCloud.client.removeChannel(channel).catch(() => {});
+      };
+    }
     return page;
   };
 })();
