@@ -88,12 +88,10 @@
     let initial = cached || null;
     if (!initial) {
       const legacy = parseJSON(localStorage.getItem('kantong.v1')) || initialData;
-      const alreadyClaimed = localStorage.getItem('kantong.legacy.finance.claimed') === '1';
-      if (!alreadyClaimed && hasFinance(legacy)) {
+      if (hasFinance(legacy)) {
         const shouldImport = window.confirm(
           'Ditemukan data Kantong lama di browser ini. Pindahkan data lama ke akun yang sedang digunakan?\n\nPilih "Batal" bila data tersebut bukan milik akun ini.'
         );
-        localStorage.setItem('kantong.legacy.finance.claimed', '1');
         if (shouldImport) initial = legacy;
       }
     }
