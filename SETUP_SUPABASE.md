@@ -23,6 +23,8 @@ Project URL yang sudah dipakai di konfigurasi awal adalah `https://bfzmexooierkb
 
 **Penting untuk database yang sudah pernah dipakai:** menjalankan `CREATE TABLE IF NOT EXISTS` saja tidak menambahkan kolom baru ke tabel lama. Karena itu, jalankan migrasi lengkap `supabase-migrations/20261119_repair_myspace_schema.sql` melalui **SQL Editor → New query → Run**. Migrasi ini memastikan seluruh kolom yang dipakai aplikasi tersedia, termasuk `file_path`, `file_name`, dan `mime`. Migrasi aman dijalankan berulang kali dan tidak menghapus baris data maupun file yang sudah tersimpan.
 
+**Catatan:** aplikasi memperbarui item dengan pasangan `user_id` dan `id`. Migrasi juga menyiapkan indeks unik untuk pasangan tersebut. Jika pembuatan indeks gagal karena ada duplikasi data lama, jangan hapus baris apa pun; kirim pesan error SQL-nya agar duplikat dapat diperiksa dengan aman.
+
 Setelah selesai, periksa kolom dengan query berikut:
 
 ```sql
