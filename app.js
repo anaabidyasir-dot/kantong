@@ -230,10 +230,12 @@ async function connectAccount(session){
   if(cloudChannel)await window.KantongCloud.client.removeChannel(cloudChannel);
   cloudChannel=window.KantongCloud.subscribeFinance((data)=>{
    if(!window.KANTONG_CURRENT_USER||window.KANTONG_CURRENT_USER.id!==user.id)return;
-   S=clean(data);
+   const incoming=clean(data);
+   if(JSON.stringify(incoming)===JSON.stringify(S))return;
+   S=incoming;
    try{localStorage.setItem('kantong.v1.user.'+user.id,JSON.stringify(S))}catch(e){console.warn('Local cache unavailable',e)}
    route();
-   toast('Data terbaru dari perangkat lain sudah disinkronkan.');
+   toast('Data dari perangkat lain berhasil disinkronkan.');
   });
   route();
  }catch(error){
