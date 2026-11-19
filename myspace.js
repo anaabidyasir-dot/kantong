@@ -47,22 +47,33 @@
     });
   }
 
-  async function saveLocalItem(item) {
+  const MYSPACE_MIGRATION_KEY = 'kantong.myspace.legacy-migration';
+  const localKey = (ownerId, itemId) => String(ownerId) + '::' + String(itemId);
+
+  async function saveLocalItem(item, ownerId) {
     const db = await openDB();
+    const record = ownerId
+      ? Object.assign({}, item, {
+          id: localKey(ownerId, item.id),
+          cloudId: String(item.id),
+          ownerId: String(ownerId)
+        })
+      : item;
     return new Promise((resolve, reject) => {
       const tx = db.transaction(STORE, 'readwrite');
-      tx.objectStore(STORE).put(item);
+      tx.objectStore(STORE).put(record);
       tx.oncomplete = resolve;
       tx.onerror = () => reject(tx.error || new Error('Gagal menyimpan cadangan MySpace lokal.'));
       tx.onabort = () => reject(tx.error || new Error('Penyimpanan dibatalkan.'));
     });
   }
 
-  async function removeLocalItem(id) {
+  async function removeLocalItem(id, ownerId) {
     const db = await openDB();
+    const key = ownerId ? localKey(ownerId, id) : id;
     return new Promise((resolve, reject) => {
       const tx = db.transaction(STORE, 'readwrite');
-      tx.objectStore(STORE).delete(id);
+      tx.objectStore(STORE).delete(key);
       tx.oncomplete = resolve;
       tx.onerror = () => reject(tx.error || new Error('Gagal menghapus item lokal.'));
     });
@@ -72,36 +83,67 @@
     return !!(window.KantongCloud && window.KantongCloud.configured && window.KantongCloud.isAuthenticated());
   }
 
+  function displayLocalItems(records, userId) {
+    return records
+      .filter(item => item.ownerId === userId)
+      .map(item => Object.assign({}, item, { id: item.cloudId || item.id }));
+  }
+
   async function getAll() {
     if (cloudEnabled()) {
-      let cloudItems = await window.KantongCloud.listMySpace();
-      let localItems = [];
+      const userId = String(window.KANTONG_CURRENT_USER.id);
+      let localRecords = [];
       try {
-        localItems = await getAllLocal();
+        localRecords = await getAllLocal();
       } catch (error) {
-        console.warn('MySpace local backup is unavailable:', error);
+        console.warn('MySpace local cache is unavailable:', error);
       }
-      const remoteIds = new Set(cloudItems.map(item => String(item.id)));
-      const itemsToMigrate = localItems.filter(item => !remoteIds.has(String(item.id)));
-      if (itemsToMigrate.length && window.confirm(
-        'Ditemukan ' + itemsToMigrate.length + ' item MySpace lokal yang belum ada di akun ini. Pindahkan ke akun yang sedang login?\n\nPilih "Batal" jika item tersebut bukan milik akun ini.'
-      )) {
-        let migrated = 0;
-        for (const item of itemsToMigrate) {
-          await window.KantongCloud.saveMySpace(item);
-          migrated += 1;
-        }
+
+      let cloudItems;
+      try {
         cloudItems = await window.KantongCloud.listMySpace();
-        notify(migrated + ' item MySpace berhasil dipindahkan ke akun cloud. Salinan lokal tetap disimpan sebagai cadangan.');
+      } catch (error) {
+        const ownLocalItems = displayLocalItems(localRecords, userId);
+        if (ownLocalItems.length) {
+          notify('Tidak dapat menghubungi cloud. Menampilkan salinan MySpace akun ini dari perangkat.');
+          return ownLocalItems;
+        }
+        throw error;
+      }
+
+      const migrationState = localStorage.getItem(MYSPACE_MIGRATION_KEY);
+      const legacyItems = migrationState
+        ? []
+        : localRecords.filter(item => !item.ownerId);
+      if (legacyItems.length) {
+        const remoteIds = new Set(cloudItems.map(item => String(item.id)));
+        const itemsToMigrate = legacyItems.filter(item => !remoteIds.has(String(item.id)));
+        const shouldImport = window.confirm(
+          'Ditemukan ' + itemsToMigrate.length + ' item MySpace lama yang belum ada di akun ini. Pindahkan ke akun yang sedang login?\n\nPilih "Batal" bila data tersebut bukan milik akun ini. Data lokal tidak akan ditawarkan ke akun lain pada browser ini.'
+        );
+        if (shouldImport) {
+          let migrated = 0;
+          for (const item of itemsToMigrate) {
+            await window.KantongCloud.saveMySpace(item);
+            migrated += 1;
+          }
+          localStorage.setItem(MYSPACE_MIGRATION_KEY, userId);
+          cloudItems = await window.KantongCloud.listMySpace();
+          if (migrated) notify(migrated + ' item MySpace berhasil dipindahkan ke akun cloud. Salinan lokal lama tetap disimpan sebagai cadangan.');
+        } else {
+          localStorage.setItem(MYSPACE_MIGRATION_KEY, 'skipped');
+        }
       }
       return cloudItems;
     }
     return getAllLocal();
   }
+
   async function saveItem(item) {
     if (cloudEnabled()) {
+      const userId = String(window.KANTONG_CURRENT_USER.id);
       const saved = await window.KantongCloud.saveMySpace(item);
-      try { await saveLocalItem(item); }
+      try { await saveLocalItem(item, userId); }
       catch (error) { console.warn('MySpace local backup was not updated:', error); }
       return saved;
     }
@@ -110,9 +152,11 @@
   }
 
   async function removeItem(id, item) {
-    if (cloudEnabled()) await window.KantongCloud.deleteMySpace(item || id);
-    await removeLocalItem(id);
+    const userId = cloudEnabled() ? String(window.KANTONG_CURRENT_USER.id) : null;
+    if (userId) await window.KantongCloud.deleteMySpace(item || id);
+    await removeLocalItem(id, userId);
   }
+
 
   const uid = () => window.crypto && crypto.randomUUID ? crypto.randomUUID() : 'ms-' + Date.now() + '-' + Math.random().toString(36).slice(2);
   const dateText = value => new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
