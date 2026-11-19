@@ -37,6 +37,8 @@
     try { return JSON.parse(value); } catch (_) { return null; }
   };
   const localFinanceKey = userId => 'kantong.v1.user.' + userId;
+  const pendingFinanceKey = userId => 'kantong.v1.pending.' + userId;
+  let lastLocalFinanceWrite = null;
   const hasFinance = value => !!value && typeof value === 'object' &&
     ['tx', 'bud', 'goals', 'debts', 'tasks'].some(k =>
       Array.isArray(value[k]) ? value[k].length > 0 :
@@ -55,12 +57,15 @@
     saveWaiters = [];
     try {
       const user = await getUser();
+      const updatedAt = new Date().toISOString();
       const { error } = await client.from('user_data').upsert({
         user_id: user.id,
         data: snapshot,
-        updated_at: new Date().toISOString()
+        updated_at: updatedAt
       }, { onConflict: 'user_id' });
       if (error) throw error;
+      lastLocalFinanceWrite = updatedAt;
+      if (!pendingFinance) localStorage.removeItem(pendingFinanceKey(user.id));
       waiters.forEach(w => w.resolve());
     } catch (error) {
       if (!pendingFinance) pendingFinance = snapshot;
@@ -81,6 +86,19 @@
     if (error) throw error;
 
     if (data && data.data) {
+      const hasPendingLocalWrite = localStorage.getItem(pendingFinanceKey(user.id)) === '1' && !!cached;
+      if (hasPendingLocalWrite) {
+        const updatedAt = new Date().toISOString();
+        const { error: pendingError } = await client.from('user_data').upsert({
+          user_id: user.id,
+          data: cached,
+          updated_at: updatedAt
+        }, { onConflict: 'user_id' });
+        if (pendingError) throw pendingError;
+        localStorage.removeItem(pendingFinanceKey(user.id));
+        lastLocalFinanceWrite = updatedAt;
+        return cached;
+      }
       localStorage.setItem(keyName, JSON.stringify(data.data));
       return data.data;
     }
@@ -112,6 +130,7 @@
     if (!userId) return Promise.reject(new Error('Tidak ada pengguna yang sedang login.'));
     const snapshot = JSON.parse(JSON.stringify(data));
     localStorage.setItem(localFinanceKey(userId), JSON.stringify(snapshot));
+    localStorage.setItem(pendingFinanceKey(userId), '1');
     pendingFinance = snapshot;
     if (saveTimer) clearTimeout(saveTimer);
     const promise = new Promise((resolve, reject) => saveWaiters.push({ resolve, reject }));
@@ -135,7 +154,9 @@
         table: 'user_data',
         filter: 'user_id=eq.' + userId
       }, payload => {
-        if (payload.new && payload.new.data) onChange(payload.new.data, payload.new.updated_at);
+        if (!payload.new || !payload.new.data || pendingFinance) return;
+        if (payload.new.updated_at && payload.new.updated_at === lastLocalFinanceWrite) return;
+        onChange(payload.new.data, payload.new.updated_at);
       })
       .subscribe();
   }
@@ -164,6 +185,19 @@
       .select('*').eq('user_id', user.id).order('updated_at', { ascending: false });
     if (error) throw error;
     return (data || []).map(mapMySpace);
+  }
+
+  function subscribeMySpace(onChange) {
+    const userId = window.KANTONG_CURRENT_USER && window.KANTONG_CURRENT_USER.id;
+    if (!userId) return null;
+    return client.channel('kantong-myspace-' + userId)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'myspace_items',
+        filter: 'user_id=eq.' + userId
+      }, () => onChange())
+      .subscribe();
   }
 
   const safeFileName = value => String(value || 'file')
@@ -233,6 +267,7 @@
     subscribeFinance,
     flushFinance,
     listMySpace,
+    subscribeMySpace,
     saveMySpace,
     deleteMySpace,
     createMySpaceSignedUrl
