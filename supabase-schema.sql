@@ -54,6 +54,11 @@ create table if not exists public.myspace_items (
   )
 );
 
+-- CREATE TABLE IF NOT EXISTS does not update a table created by an older version.
+-- Add the column explicitly so existing installations can be upgraded safely.
+alter table public.myspace_items
+  add column if not exists file_path text;
+
 create index if not exists myspace_items_user_updated_idx
   on public.myspace_items (user_id, updated_at desc);
 
@@ -149,3 +154,5 @@ begin
   end if;
 end
 $$;
+
+notify pgrst, 'reload schema';
