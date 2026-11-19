@@ -250,10 +250,14 @@
   }
 
   function showSignedIn(session) {
+    const previousUserId = window.KANTONG_CURRENT_USER && window.KANTONG_CURRENT_USER.id;
     window.KANTONG_CURRENT_USER = session && session.user ? session.user : null;
     const signedIn = !!window.KANTONG_CURRENT_USER;
+    const nextUserId = window.KANTONG_CURRENT_USER && window.KANTONG_CURRENT_USER.id;
+    const accountChanged = !!(previousUserId && nextUserId && previousUserId !== nextUserId);
+    if (accountChanged) window.KANTONG_CLOUD_READY = false;
     const recovery = mode === 'recovery';
-    const loading = signedIn && !window.KANTONG_CLOUD_READY && !recovery;
+    const loading = signedIn && (!window.KANTONG_CLOUD_READY || accountChanged) && !recovery;
     if (loading) renderLoading();
     screen.hidden = signedIn && !loading && !recovery;
     document.body.classList.toggle('auth-signed-out', !signedIn || loading || recovery);
