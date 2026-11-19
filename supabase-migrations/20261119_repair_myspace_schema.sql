@@ -41,7 +41,7 @@ begin
       and attribute.attnum > 0
       and not attribute.attisdropped
       and attribute.attnotnull
-      and attribute.attname <> all (array[
+      and attribute.attname::text <> all (array[
         'user_id',
         'id',
         'type',
@@ -50,7 +50,7 @@ begin
         'size',
         'created_at',
         'updated_at'
-      ])
+      ]::text[])
   loop
     execute format(
       'alter table public.myspace_items alter column %I drop not null',
