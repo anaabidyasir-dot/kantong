@@ -221,6 +221,9 @@ async function connectAccount(session){
   S=clean(initial);
   activeCloudUser=user.id;
   window.KANTONG_CLOUD_READY=true;
+  const authScreen=document.getElementById('auth-screen');
+  if(authScreen)authScreen.hidden=true;
+  document.body.classList.remove('auth-booting','auth-signed-out');
   if(cloudChannel)await window.KantongCloud.client.removeChannel(cloudChannel);
   cloudChannel=window.KantongCloud.subscribeFinance((data)=>{
    if(!window.KANTONG_CURRENT_USER||window.KANTONG_CURRENT_USER.id!==user.id)return;
@@ -237,10 +240,18 @@ async function connectAccount(session){
    if(cached){
     S=clean(JSON.parse(cached));
     activeCloudUser=user.id;
+    const authScreen=document.getElementById('auth-screen');
+    if(authScreen)authScreen.hidden=true;
+    document.body.classList.remove('auth-booting','auth-signed-out');
     route();
     toast('Koneksi cloud belum tersedia. Menampilkan salinan lokal; perubahan akan dicoba sinkron saat internet kembali.');
    }else{
-    toast('Data cloud belum dapat dimuat: '+(error.message||'periksa koneksi dan konfigurasi Supabase.'));
+    const authScreen=document.getElementById('auth-screen');
+    if(authScreen){
+     authScreen.hidden=false;
+     const card=h('section',{class:'auth-card'},h('h1',{},'Data belum bisa dimuat'),h('p',{},error.message||'Periksa koneksi dan konfigurasi Supabase.'),h('button',{class:'btn',onclick:()=>connectAccount({user})},'Coba lagi'));
+     authScreen.replaceChildren(card);
+    }
    }
   }catch(cacheError){
    toast('Data cloud belum dapat dimuat. Periksa koneksi, lalu muat ulang halaman.');
@@ -262,5 +273,5 @@ route();
 
 window.addEventListener('online',()=>{
  const user=window.KANTONG_CURRENT_USER;
- if(user&&activeCloudUser===user.id&&!window.KANTONG_CLOUD_READY)connectAccount({user});
+ if(user&&!window.KANTONG_CLOUD_READY&&!loadingCloudUser)connectAccount({user});
 });
