@@ -28,11 +28,11 @@ Panduan ini menjelaskan cara menggunakan setiap fitur, menjaga data tetap aman, 
 
 Buka Kantong melalui alamat website yang diberikan. Aplikasi dapat digunakan melalui komputer, tablet, maupun ponsel.
 
-Kantong tidak memerlukan proses pendaftaran atau login. Setelah aplikasi dibuka, pilih menu yang tersedia untuk mulai mencatat dan mengelola keuangan.
+Kantong menggunakan akun email dan kata sandi. Pilih **Daftar** untuk membuat akun baru, konfirmasi email apabila diminta, lalu **Masuk**. Gunakan akun yang sama ketika membuka Kantong dari HP, tablet, dan komputer agar data akun yang sama dapat disinkronkan.
 
 Gunakan tombol **Catat** atau tombol **Catat transaksi baru** untuk menambahkan pemasukan maupun pengeluaran.
 
-> **Catatan:** Data Kantong tersimpan pada browser dan perangkat yang sedang digunakan. Baca bagian [Penyimpanan data dan privasi](#11-penyimpanan-data-dan-privasi) agar kamu memahami cara menjaga catatan tetap aman.
+> **Catatan:** Saat pertama kali masuk pada browser yang memiliki data Kantong versi lama, aplikasi akan menawarkan untuk memindahkan data tersebut ke akun. Setujui hanya jika data itu memang milikmu. Baca bagian [Penyimpanan data dan privasi](#11-penyimpanan-data-dan-privasi).
 
 ## 2. Beranda
 
@@ -198,28 +198,29 @@ Pada menu **Data**, tersedia tombol **Hapus semua data**. Gunakan fitur ini hany
 
 ## 11. Penyimpanan data dan privasi
 
-Kantong menyimpan catatan secara lokal pada browser yang digunakan. Data tidak otomatis dikirim ke server atau disinkronkan ke perangkat lain.
+Setelah login, data keuangan disimpan pada database cloud milik Kantong. MySpace menyimpan catatan dan file pada bucket privat. Kantong menggunakan aturan Row Level Security (RLS) agar setiap akun hanya dapat membaca dan mengubah data miliknya sendiri.
 
 Hal-hal yang perlu diketahui:
 
-- Catatan pada laptop tidak otomatis muncul pada HP.
-- Browser atau profil browser yang berbeda dapat memiliki penyimpanan yang berbeda.
-- Jika beberapa orang menggunakan browser dan profil yang sama pada perangkat yang sama, mereka dapat melihat atau menggunakan catatan yang tersimpan di sana.
-- Menghapus data situs atau penyimpanan browser dapat menghapus catatan Kantong.
-- Mode privat atau penyamaran bukan tempat yang tepat untuk menyimpan catatan jangka panjang.
-- File cadangan `.json` dapat dibaca sebagai teks dan berisi informasi keuangan. Jangan membagikannya secara terbuka atau mengirimkannya kepada orang yang tidak dipercaya.
+- Masuk dengan akun yang sama pada HP dan komputer untuk melihat data yang sama.
+- Pemasukan, pengeluaran, anggaran, target, utang, dan tugas disinkronkan melalui cloud. Perubahan keuangan dapat muncul di perangkat lain saat terhubung internet.
+- MySpace juga disimpan di cloud privat dan diperbarui lintas perangkat. Jika halaman MySpace sudah terbuka, perubahan dari perangkat lain akan dimuat otomatis.
+- Browser menyimpan salinan lokal untuk membantu pemakaian dan pemulihan. Membersihkan data situs dapat menghapus salinan lokal, tetapi data cloud tetap tersedia selama project Supabase aktif dan tidak dihapus.
+- Saat internet terputus, perubahan keuangan disimpan lokal terlebih dahulu dan dicoba dikirim kembali saat koneksi pulih. Hindari mengedit catatan yang sama secara bersamaan pada dua perangkat.
+- File cadangan `.json` berisi data keuangan, bukan salinan file lampiran MySpace. File MySpace penting dapat diunduh dari masing-masing item.
+- File cadangan dapat dibaca sebagai teks dan berisi informasi keuangan. Jangan membagikannya secara terbuka atau mengirimkannya kepada orang yang tidak dipercaya.
 
-Untuk menjaga privasi, gunakan profil browser pribadi pada perangkat yang tidak digunakan bersama, kunci perangkat dengan PIN atau kata sandi, dan unduh cadangan secara berkala ke tempat penyimpanan yang aman.
+Untuk menjaga privasi, gunakan akun pribadi pada perangkat yang tidak digunakan bersama, kunci perangkat dengan PIN atau kata sandi, keluar dari akun setelah menggunakan perangkat bersama, dan unduh cadangan secara berkala.
 
 Kantong bukan aplikasi perbankan dan tidak terhubung ke rekening bank. Saldo yang ditampilkan hanya berdasarkan transaksi yang dimasukkan oleh pengguna.
 
 ## 12. Mengatasi kendala umum
 
 **Catatan tidak muncul di perangkat lain**  
-Data tersimpan pada browser dan perangkat tempat catatan dibuat. Gunakan fitur Unduh Cadangan pada perangkat asal, lalu Pulihkan Cadangan pada perangkat tujuan.
+Pastikan kamu masuk dengan akun yang sama dan kedua perangkat memiliki koneksi internet. Muat ulang halaman jika perlu. Jika masalah berlanjut, periksa status project Supabase dan aturan pada file `supabase-schema.sql`.
 
-**Data hilang setelah browser dibersihkan**  
-Pembersihan data situs dapat menghapus penyimpanan Kantong. Pulihkan data menggunakan file cadangan yang pernah diunduh.
+**Data lokal hilang setelah browser dibersihkan**  
+Masuk kembali dengan akun yang sama untuk memuat data cloud. Salinan lokal dapat hilang saat data situs dihapus, karena itu cadangan tetap perlu diunduh secara berkala.
 
 **File cadangan tidak dapat dipulihkan**  
 Pastikan file yang dipilih merupakan file cadangan Kantong berformat `.json` dan belum rusak. Pilih kembali file cadangan yang benar.
