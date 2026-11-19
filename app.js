@@ -180,9 +180,12 @@ V.data=()=>{
  const fi=h('input',{type:'file',accept:'.json,application/json'});
  fi.addEventListener('change',()=>{const f=fi.files[0];if(!f)return;if(f.size>2e6)return toast('File terlalu besar.');
   const r=new FileReader();r.onload=()=>{try{const parsed=JSON.parse(r.result);if(!parsed||typeof parsed!=='object'||Array.isArray(parsed))throw new Error('Format tidak sesuai');const n=clean(parsed);if(confirm('Ganti semua data sekarang dengan isi cadangan ini?')){S=n;const ok=save();route();if(ok)toast('Cadangan berhasil dipulihkan.')}}catch(e){toast('File bukan cadangan Kantong yang valid atau isinya rusak.')}};r.onerror=()=>toast('File cadangan tidak berhasil dibaca.');r.readAsText(f)});
- return h('div',{},head('Data','Pengaturan, pencadangan, dan privasi.'),
+ const syncText=window.KANTONG_CLOUD_READY
+  ? 'Data akun tersimpan di cloud dan disinkronkan ke perangkat lain saat terhubung internet. File MySpace disimpan privat.'
+  : 'Sinkronisasi cloud belum siap. Perubahan tersimpan pada perangkat ini dan akan dicoba dikirim saat koneksi kembali. Unduh cadangan secara berkala.';
+ return h('div',{},head('Data','Akun, sinkronisasi, pencadangan, dan privasi.'),
   h('section',{class:'pn'},h('h2',{},'Tanggal kiriman berikutnya'),h('p',{class:'mute sm'},'Dipakai untuk menghitung jatah harian di Beranda.'),fld('Tanggal',nx)),
-  h('section',{class:'pn',style:'margin-top:1rem'},h('h2',{},'Cadangan'),h('p',{class:'mute sm'},'Data disimpan di penyimpanan lokal browser pada perangkat ini, bukan di server. Data tidak otomatis pindah ke HP atau browser lain. Jika data situs dihapus, perangkat hilang, atau penyimpanan browser dibersihkan, data bisa hilang. Unduh cadangan secara rutin dan simpan file JSON di tempat yang aman.'),
+  h('section',{class:'pn',style:'margin-top:1rem'},h('h2',{},'Sinkronisasi dan cadangan'),h('p',{class:'mute sm'},syncText+' File cadangan JSON tetap penting karena paket gratis tidak menyediakan backup database otomatis harian. Simpan hasil unduhan di tempat yang aman.'),
    h('div',{class:'inl'},h('button',{class:'btn',onclick:()=>{const url=URL.createObjectURL(new Blob([JSON.stringify(S,null,1)],{type:'application/json'})),a=h('a',{href:url,download:'kantong-cadangan-'+today()+'.json'});document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000)}},'Unduh cadangan')),
    h('div',{style:'margin-top:1rem'},fld('Pulihkan dari file cadangan',fi))),
   h('section',{class:'pn',style:'margin-top:1rem'},h('h2',{},'Hapus semua data'),h('p',{class:'mute sm'},'Peringatan: file cadangan berisi catatan keuangan dalam bentuk yang dapat dibaca. Jangan bagikan kepada orang lain.'),h('button',{class:'btn ghost',onclick:()=>{if(confirm('Hapus semua data? Ini tidak bisa dibatalkan.')){S=blank();save();route()}}},'Hapus semua data')))};
