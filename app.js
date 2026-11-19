@@ -215,9 +215,17 @@ async function connectAccount(session){
  if(activeCloudUser===user.id&&window.KANTONG_CLOUD_READY)return;
  if(loadingCloudUser===user.id)return;
  loadingCloudUser=user.id;
+ const keepCached=activeCloudUser===user.id;
  window.KANTONG_CLOUD_READY=false;
- S=blank();
- route();
+ if(!keepCached){S=blank();route();}
+ const authScreen=document.getElementById('auth-screen');
+ if(authScreen){
+  authScreen.replaceChildren(h('section',{class:'auth-card'},
+   h('h1',{},keepCached?'Menyambungkan kembali':'Menyiapkan Kantong'),
+   h('p',{},'Sedang menyelaraskan catatan akun. Jangan tutup halaman dulu.')));
+  authScreen.hidden=false;
+ }
+ document.body.classList.add('auth-booting','auth-signed-out');
  try{
   const initial=await window.KantongCloud.loadFinance(S);
   if(!window.KANTONG_CURRENT_USER||window.KANTONG_CURRENT_USER.id!==user.id)return;
