@@ -70,10 +70,15 @@
 
   async function removeLocalItem(id, ownerId) {
     const db = await openDB();
-    const key = ownerId ? localKey(ownerId, id) : id;
     return new Promise((resolve, reject) => {
       const tx = db.transaction(STORE, 'readwrite');
-      tx.objectStore(STORE).delete(key);
+      const store = tx.objectStore(STORE);
+      if (ownerId) {
+        store.delete(localKey(ownerId, id));
+        if (localStorage.getItem(MYSPACE_MIGRATION_KEY) === String(ownerId)) store.delete(id);
+      } else {
+        store.delete(id);
+      }
       tx.oncomplete = resolve;
       tx.onerror = () => reject(tx.error || new Error('Gagal menghapus item lokal.'));
     });
@@ -84,8 +89,9 @@
   }
 
   function displayLocalItems(records, userId) {
+    const ownsLegacyItems = localStorage.getItem(MYSPACE_MIGRATION_KEY) === userId;
     return records
-      .filter(item => item.ownerId === userId)
+      .filter(item => item.ownerId === userId || (ownsLegacyItems && !item.ownerId))
       .map(item => Object.assign({}, item, { id: item.cloudId || item.id }));
   }
 
