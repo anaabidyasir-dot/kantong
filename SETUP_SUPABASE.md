@@ -23,12 +23,29 @@ Project URL yang sudah dipakai di konfigurasi awal adalah `https://bfzmexooierkb
 
 Jangan menghapus atau melemahkan policy RLS. Jangan membuat bucket MySpace menjadi public.
 
-## 3. Atur alamat konfirmasi email
+## 3. Aktifkan metode login
 
+### Email dan kata sandi
+1. Buka **Authentication → Sign In / Providers**.
+2. Pastikan provider **Email** aktif.
+3. Pastikan pendaftaran pengguna baru diizinkan (Allow new users to sign up).
+4. Bila konfirmasi email aktif, pengguna harus menekan tautan konfirmasi sebelum login.
+
+### Google
+1. Di Supabase, buka **Authentication → Sign In / Providers → Google**, lalu aktifkan provider Google.
+2. Buat OAuth Client ID jenis **Web application** pada Google Cloud / Google Auth Platform.
+3. Pada bagian **Authorized JavaScript origins**, masukkan alamat domain Netlify Kantong, misalnya `https://kantongme.netlify.app` (gunakan domain situsmu yang sebenarnya).
+4. Pada bagian **Authorized redirect URIs**, masukkan callback Supabase berikut:
+
+   `https://bfzmexooierkbwhhnexv.supabase.co/auth/v1/callback`
+
+   Callback ini khusus project Supabase yang URL-nya tercantum di konfigurasi awal. Jika project-mu berbeda, salin callback yang ditampilkan di pengaturan Google provider pada Supabase.
+5. Salin **Client ID** dan **Client Secret** dari Google ke kolom provider Google pada Supabase, lalu simpan. Jangan menaruh Client Secret ke GitHub, JavaScript frontend, atau file konfigurasi website.
+
+### URL aplikasi
 1. Buka **Authentication → URL Configuration** di Supabase.
-2. Isi **Site URL** dengan alamat website Kantong, misalnya `https://kantongme.netlify.app`.
+2. Isi **Site URL** dengan alamat website Kantong yang sebenarnya.
 3. Tambahkan alamat website tersebut ke **Redirect URLs**. Tambahkan juga alamat lokal untuk pengujian, misalnya `http://localhost:8000/**`.
-4. Jika konfirmasi email aktif, pengguna harus menekan tautan konfirmasi yang dikirim ke email sebelum login.
 
 ## 4. Deploy ke Netlify
 
