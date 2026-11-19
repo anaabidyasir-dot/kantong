@@ -139,5 +139,13 @@ begin
   ) then
     alter publication supabase_realtime add table public.user_data;
   end if;
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime'
+      and schemaname = 'public'
+      and tablename = 'myspace_items'
+  ) then
+    alter publication supabase_realtime add table public.myspace_items;
+  end if;
 end
 $$;
