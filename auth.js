@@ -113,6 +113,42 @@
     if (passwordLabel) form.append(passwordLabel);
     form.append(submit);
 
+    const googlePanel = document.createElement('div');
+    googlePanel.className = 'auth-google-panel';
+    if (mode === 'login' || mode === 'signup') {
+      const divider = document.createElement('div');
+      divider.className = 'auth-divider';
+      divider.textContent = 'atau';
+      const google = document.createElement('button');
+      google.type = 'button';
+      google.className = 'auth-google';
+      const mark = document.createElement('span');
+      mark.className = 'auth-google-mark';
+      mark.textContent = 'G';
+      const googleText = document.createElement('span');
+      googleText.textContent = 'Lanjutkan dengan Google';
+      google.append(mark, googleText);
+      google.addEventListener('click', async () => {
+        if (busy) return;
+        busy = true;
+        google.disabled = true;
+        try {
+          const { error } = await window.KantongCloud.client.auth.signInWithOAuth({
+            provider: 'google',
+            options: { redirectTo: window.location.origin }
+          });
+          if (error) throw error;
+        } catch (error) {
+          status.textContent = error.message || 'Login Google belum aktif. Periksa pengaturan Google provider di Supabase.';
+          status.className = 'auth-message error';
+          status.hidden = false;
+          busy = false;
+          google.disabled = false;
+        }
+      });
+      googlePanel.append(divider, google);
+    }
+
     const links = document.createElement('div');
     links.className = 'auth-links';
     if (mode === 'login') {
@@ -209,7 +245,7 @@
       }
     });
 
-    card.append(brand, title, intro, form, links, note, status);
+    card.append(brand, title, intro, form, googlePanel, links, note, status);
     screen.append(card);
   }
 
