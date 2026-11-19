@@ -97,6 +97,7 @@
         if (pendingError) throw pendingError;
         localStorage.removeItem(pendingFinanceKey(user.id));
         lastLocalFinanceWrite = updatedAt;
+        if (JSON.stringify(pendingFinance) === JSON.stringify(cached)) pendingFinance = null;
         return cached;
       }
       localStorage.setItem(keyName, JSON.stringify(data.data));
