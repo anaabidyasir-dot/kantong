@@ -97,7 +97,7 @@
     submit.className = 'btn auth-submit';
     submit.textContent = mode === 'signup' ? 'Buat akun' : mode === 'reset' ? 'Kirim tautan reset' : mode === 'recovery' ? 'Simpan kata sandi baru' : 'Masuk';
 
-    form.append(emailLabel);
+    if (mode !== 'recovery') form.append(emailLabel);
     if (passwordLabel) form.append(passwordLabel);
     form.append(submit);
 
