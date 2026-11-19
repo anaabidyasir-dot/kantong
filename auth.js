@@ -198,18 +198,14 @@
     document.body.classList.toggle('auth-signed-out', !signedIn);
     document.body.classList.toggle('auth-booting', false);
 
-    let userBar = document.getElementById('kantong-user-bar');
-    if (!userBar) {
-      const aside = document.querySelector('aside');
-      if (aside) {
-        userBar = document.createElement('div');
-        userBar.id = 'kantong-user-bar';
-        userBar.className = 'kantong-user-bar';
-        aside.append(userBar);
+    const buildUserBar = (id, className) => {
+      let bar = document.getElementById(id);
+      if (!bar) {
+        bar = document.createElement('div');
+        bar.id = id;
+        bar.className = className;
       }
-    }
-    if (userBar) {
-      userBar.replaceChildren();
+      bar.replaceChildren();
       if (signedIn) {
         const label = document.createElement('span');
         label.className = 'kantong-user-email';
@@ -226,8 +222,22 @@
             window.alert(error.message);
           }
         });
-        userBar.append(label, logout);
+        bar.append(label, logout);
       }
+      return bar;
+    };
+    const aside = document.querySelector('aside');
+    if (aside) aside.append(buildUserBar('kantong-user-bar', 'kantong-user-bar'));
+    const mobileBrand = document.querySelector('.mobile-brand');
+    if (mobileBrand) {
+      let mobileBar = document.getElementById('kantong-mobile-user-bar');
+      if (!mobileBar) {
+        mobileBar = document.createElement('div');
+        mobileBar.id = 'kantong-mobile-user-bar';
+        mobileBar.className = 'kantong-mobile-user-bar';
+        mobileBrand.insertAdjacentElement('afterend', mobileBar);
+      }
+      mobileBar.replaceChildren(buildUserBar('kantong-mobile-user-inner', 'kantong-mobile-user-inner'));
     }
 
     window.setTimeout(() => {
