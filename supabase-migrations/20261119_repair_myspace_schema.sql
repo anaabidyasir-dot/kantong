@@ -28,7 +28,7 @@ create index if not exists myspace_items_user_updated_idx
 -- Some early Kantong databases used a required legacy column named item_type.
 -- The current app writes the "type" column instead. Keep the legacy column,
 -- but make it optional when it exists so inserts from the current app succeed.
-do $
+do $compat$
 begin
   if exists (
     select 1
@@ -41,7 +41,7 @@ begin
       alter column item_type drop not null;
   end if;
 end
-$;
+$compat$;
 
 -- Ask PostgREST (the Supabase Data API) to reload its column metadata.
 notify pgrst, 'reload schema';
