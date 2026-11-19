@@ -16,6 +16,11 @@ alter table public.myspace_items
   add column if not exists created_at timestamptz not null default now(),
   add column if not exists updated_at timestamptz not null default now();
 
+-- The app upserts items on the (user_id, id) pair. Ensure old tables have
+-- a matching unique index even if their original primary key was different.
+create unique index if not exists myspace_items_user_id_id_uidx
+  on public.myspace_items (user_id, id);
+
 -- Keep the query used by MySpace list views efficient.
 create index if not exists myspace_items_user_updated_idx
   on public.myspace_items (user_id, updated_at desc);
