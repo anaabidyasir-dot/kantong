@@ -76,7 +76,7 @@
     email.required = true;
     email.maxLength = 254;
     email.placeholder = 'nama@email.com';
-    emailLabel.append(email);\n    if (mode !== 'recovery') form.append(emailLabel);
+    emailLabel.append(email);
 
     let password = null;
     let passwordLabel = null;
