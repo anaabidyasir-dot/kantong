@@ -1,6 +1,6 @@
 # Menyiapkan akun dan sinkronisasi cloud Kantong
 
-Panduan ini ditujukan untuk pemula. Perubahan kode sudah disiapkan di branch `feat/supabase-account-sync`; lakukan langkah berikut setelah branch digabungkan ke `main`.
+Panduan ini ditujukan untuk pemula. Perbaikan skema MySpace sudah tersedia di branch `main`.
 
 ## 1. Isi konfigurasi Supabase
 
@@ -51,7 +51,7 @@ Jangan menghapus tabel `myspace_items`, jangan membuat ulang database, dan janga
 
 ## 4. Deploy ke Netlify
 
-Jika Netlify sudah terhubung ke GitHub, gabungkan pull request ini ke `main`; Netlify akan melakukan deploy otomatis sesuai pengaturan situsmu. Jika deploy tidak otomatis, buka Netlify dan jalankan **Trigger deploy**.
+Untuk error `file_path`, kamu tidak perlu melakukan deploy ulang ke Netlify karena perbaikannya ada pada skema database Supabase. Setelah menjalankan migrasi SQL pada langkah 2, muat ulang website Kantong dengan `Ctrl + Shift + R`. Deploy Netlify hanya diperlukan bila ada perubahan kode frontend.
 
 ## 5. Uji login dan sinkronisasi
 
