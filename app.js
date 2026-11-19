@@ -21,7 +21,27 @@ function clean(d){
  b.next=dt(d.next);return b
 }
 let S;try{S=clean(JSON.parse(localStorage.getItem(KEY)))}catch(e){S=blank()}
-function save(){try{localStorage.setItem(KEY,JSON.stringify(S));return true}catch(e){setTimeout(()=>toast('Penyimpanan browser gagal atau penuh. Perubahan ini belum tersimpan permanen; segera unduh cadangan.'),0);return false}}
+function save(){
+ try{
+  const cloud=window.KantongCloud;
+  const user=window.KANTONG_CURRENT_USER;
+  if(cloud&&cloud.isAuthenticated()&&user&&user.id){
+   localStorage.setItem('kantong.v1.user.'+user.id,JSON.stringify(S));
+   if(window.KANTONG_CLOUD_READY){
+    cloud.saveFinance(S).catch(e=>{
+     console.error('Kantong sync:',e);
+     toast('Perubahan tersimpan di perangkat ini, tetapi belum tersinkron. Periksa internet lalu coba lagi.');
+    });
+   }
+  }else{
+   localStorage.setItem(KEY,JSON.stringify(S));
+  }
+  return true;
+ }catch(e){
+  setTimeout(()=>toast('Penyimpanan browser gagal atau penuh. Perubahan ini belum tersimpan permanen; unduh cadangan.'),0);
+  return false;
+ }
+}
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const rp=n=>new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(n);
 const pad=n=>String(n).padStart(2,'0');
@@ -170,9 +190,59 @@ V.data=()=>{
   h('section',{class:'pn',style:'margin-top:1rem'},h('h2',{},'Hapus semua data'),h('p',{class:'mute sm'},'Peringatan: file cadangan berisi catatan keuangan dalam bentuk yang dapat dibaca. Jangan bagikan kepada orang lain.'),h('button',{class:'btn ghost',onclick:()=>{if(confirm('Hapus semua data? Ini tidak bisa dibatalkan.')){S=blank();save();route()}}},'Hapus semua data')))};
 
 const NAV=[['beranda','Beranda'],['transaksi','Transaksi'],['anggaran','Anggaran'],['tabungan','Tabungan'],['utang','Utang'],['tugas','Tugas'],['myspace','MySpace'],['data','Data']];
-function route(){const k=Object.prototype.hasOwnProperty.call(V,location.hash.slice(1))?location.hash.slice(1):'beranda';
+function route(){
+ const k=Object.prototype.hasOwnProperty.call(V,location.hash.slice(1))?location.hash.slice(1):'beranda';
  $('#nav').replaceChildren(...NAV.map(([id,l])=>h('a',{href:'#'+id,'aria-current':id===k?'page':'false'},ic(IC[id]),l)));
- $('#main').replaceChildren(V[k]())}
+ $('#main').replaceChildren(V[k]());
+}
+let cloudChannel=null,activeCloudUser=null,loadingCloudUser=null;
+async function connectAccount(session){
+ const user=session&&session.user?session.user:null;
+ if(!user){
+  window.KANTONG_CLOUD_READY=false;
+  activeCloudUser=null;
+  loadingCloudUser=null;
+  if(cloudChannel&&window.KantongCloud&&window.KantongCloud.client){
+   window.KantongCloud.client.removeChannel(cloudChannel).catch(()=>{});
+   cloudChannel=null;
+  }
+  S=blank();
+  route();
+  return;
+ }
+ if(activeCloudUser===user.id&&window.KANTONG_CLOUD_READY)return;
+ if(loadingCloudUser===user.id)return;
+ loadingCloudUser=user.id;
+ window.KANTONG_CLOUD_READY=false;
+ S=blank();
+ route();
+ try{
+  const initial=await window.KantongCloud.loadFinance(S);
+  if(!window.KANTONG_CURRENT_USER||window.KANTONG_CURRENT_USER.id!==user.id)return;
+  S=clean(initial);
+  activeCloudUser=user.id;
+  window.KANTONG_CLOUD_READY=true;
+  if(cloudChannel)await window.KantongCloud.client.removeChannel(cloudChannel);
+  cloudChannel=window.KantongCloud.subscribeFinance((data)=>{
+   if(!window.KANTONG_CURRENT_USER||window.KANTONG_CURRENT_USER.id!==user.id)return;
+   S=clean(data);
+   try{localStorage.setItem('kantong.v1.user.'+user.id,JSON.stringify(S))}catch(e){console.warn('Local cache unavailable',e)}
+   route();
+   toast('Data terbaru dari perangkat lain sudah disinkronkan.');
+  });
+  route();
+ }catch(error){
+  console.error('Kantong initial sync:',error);
+  toast('Data cloud belum dapat dimuat: '+(error.message||'periksa koneksi dan konfigurasi Supabase.'));
+ }finally{
+  if(loadingCloudUser===user.id)loadingCloudUser=null;
+ }
+}
+window.addEventListener('kantong-auth-change',event=>connectAccount(event.detail&&event.detail.session));
+window.addEventListener('kantong-cloud-error',event=>{
+ const message=event.detail&&event.detail.message;
+ toast('Sinkronisasi belum berhasil'+(message?': '+message:'')+'. Data lokal masih tersedia.');
+});
 $('#fab').append(ic(IC.plus),h('span',{},'Catat'));$('#fab').addEventListener('click',openAdd);
 $('#dq').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.close()});
 addEventListener('hashchange',()=>{route();scrollTo(0,0)});
