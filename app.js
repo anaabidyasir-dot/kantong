@@ -27,12 +27,10 @@ function save(){
   const user=window.KANTONG_CURRENT_USER;
   if(cloud&&cloud.isAuthenticated()&&user&&user.id){
    localStorage.setItem('kantong.v1.user.'+user.id,JSON.stringify(S));
-   if(window.KANTONG_CLOUD_READY){
-    cloud.saveFinance(S).catch(e=>{
-     console.error('Kantong sync:',e);
-     toast('Perubahan tersimpan di perangkat ini, tetapi belum tersinkron. Periksa internet lalu coba lagi.');
-    });
-   }
+   cloud.saveFinance(S).catch(e=>{
+    console.error('Kantong sync:',e);
+    toast('Perubahan tersimpan di perangkat ini, tetapi belum tersinkron. Periksa internet lalu coba lagi.');
+   });
   }else{
    localStorage.setItem(KEY,JSON.stringify(S));
   }
@@ -191,6 +189,7 @@ V.data=()=>{
 
 const NAV=[['beranda','Beranda'],['transaksi','Transaksi'],['anggaran','Anggaran'],['tabungan','Tabungan'],['utang','Utang'],['tugas','Tugas'],['myspace','MySpace'],['data','Data']];
 function route(){
+ if(typeof window.cleanupMySpace==='function'){window.cleanupMySpace();window.cleanupMySpace=null;}
  const k=Object.prototype.hasOwnProperty.call(V,location.hash.slice(1))?location.hash.slice(1):'beranda';
  $('#nav').replaceChildren(...NAV.map(([id,l])=>h('a',{href:'#'+id,'aria-current':id===k?'page':'false'},ic(IC[id]),l)));
  $('#main').replaceChildren(V[k]());
@@ -260,4 +259,8 @@ $('#dq').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTar
 addEventListener('hashchange',()=>{route();scrollTo(0,0)});
 route();
 
-\nwindow.addEventListener('online',()=>{\n const user=window.KANTONG_CURRENT_USER;\n if(user&&activeCloudUser===user.id&&!window.KANTONG_CLOUD_READY)connectAccount({user});\n});\n
+
+window.addEventListener('online',()=>{
+ const user=window.KANTONG_CURRENT_USER;
+ if(user&&activeCloudUser===user.id&&!window.KANTONG_CLOUD_READY)connectAccount({user});
+});
