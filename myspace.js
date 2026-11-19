@@ -75,21 +75,29 @@
   async function getAll() {
     if (cloudEnabled()) {
       let cloudItems = await window.KantongCloud.listMySpace();
-      if (!cloudItems.length) {
-        const localItems = await getAllLocal();
-        if (localItems.length && window.confirm(
-          'Ditemukan ' + localItems.length + ' item MySpace lama di browser ini. Pindahkan ke akun yang sedang login?\n\nPilih "Batal" jika file/catatan ini bukan milik akun tersebut.'
-        )) {
-          for (const item of localItems) await window.KantongCloud.saveMySpace(item);
-          cloudItems = await window.KantongCloud.listMySpace();
-          notify('MySpace lama berhasil dipindahkan ke akun cloud. Salinan lokal tetap disimpan sebagai cadangan.');
+      let localItems = [];
+      try {
+        localItems = await getAllLocal();
+      } catch (error) {
+        console.warn('MySpace local backup is unavailable:', error);
+      }
+      const remoteIds = new Set(cloudItems.map(item => String(item.id)));
+      const itemsToMigrate = localItems.filter(item => !remoteIds.has(String(item.id)));
+      if (itemsToMigrate.length && window.confirm(
+        'Ditemukan ' + itemsToMigrate.length + ' item MySpace lokal yang belum ada di akun ini. Pindahkan ke akun yang sedang login?\n\nPilih "Batal" jika item tersebut bukan milik akun ini.'
+      )) {
+        let migrated = 0;
+        for (const item of itemsToMigrate) {
+          await window.KantongCloud.saveMySpace(item);
+          migrated += 1;
         }
+        cloudItems = await window.KantongCloud.listMySpace();
+        notify(migrated + ' item MySpace berhasil dipindahkan ke akun cloud. Salinan lokal tetap disimpan sebagai cadangan.');
       }
       return cloudItems;
     }
     return getAllLocal();
   }
-
   async function saveItem(item) {
     if (cloudEnabled()) {
       const saved = await window.KantongCloud.saveMySpace(item);
@@ -284,7 +292,7 @@
         if (!selected) return notify('Pilih file PDF, gambar, atau video terlebih dahulu.');
         const mime = acceptedMime(selected);
         if (!mime) return notify('Format belum didukung. Gunakan PDF, JPG, PNG, GIF, WEBP, MP4, WEBM, atau MOV.');
-        if (selected.size > MAX_FILE_SIZE) return notify('Ukuran file maksimal 100 MB per file.');
+        if (selected.size > MAX_FILE_SIZE) return notify('Ukuran file maksimal 50 MB per file.');
         if (!title.value.trim()) return notify('Judul materi wajib diisi.');
         const submit = form.querySelector('[type="submit"]');
         submit.disabled = true;
