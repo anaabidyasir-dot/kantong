@@ -28,7 +28,7 @@ Project URL yang sudah dipakai di konfigurasi awal adalah `https://bfzmexooierkb
 Setelah selesai, periksa kolom dengan query berikut:
 
 ```sql
-SELECT column_name, data_type
+SELECT column_name, is_nullable
 FROM information_schema.columns
 WHERE table_schema = 'public'
   AND table_name = 'myspace_items'
